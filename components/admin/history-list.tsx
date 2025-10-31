@@ -108,7 +108,7 @@ export async function HistoryList({ page = 1 }: { page?: number }) {
             <div className="text-6xl mb-4">📚</div>
             <h3 className="text-2xl font-semibold mb-2">No Historical Events</h3>
             <p className="text-muted-foreground mb-6">
-              Completed events will appear here
+              Completed or archived events will appear here
             </p>
             <Button asChild>
               <Link href={adminPaths.root}>Back to Events</Link>
