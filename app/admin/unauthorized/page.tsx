@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { adminPaths } from "@/lib/paths";
+import { adminPaths, publicPaths } from "@/lib/paths";
 import { toast } from "sonner";
 
 export default function UnauthorizedPage() {
@@ -51,9 +51,9 @@ export default function UnauthorizedPage() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => router.push(adminPaths.signIn)}
+              onClick={() => router.push(publicPaths.home)}
             >
-              Back to Sign In
+              Back to Home
             </Button>
           </div>
         </CardContent>
