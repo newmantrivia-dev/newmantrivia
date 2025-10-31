@@ -120,6 +120,8 @@ export const events = pgTable(
     index("events_status_idx").on(table.status),
     index("events_created_by_idx").on(table.createdBy),
     index("events_started_at_idx").on(table.startedAt),
+    // Composite index for completed events query (status + ended_at filter)
+    index("events_status_ended_at_idx").on(table.status, table.endedAt),
   ]
 );
 
