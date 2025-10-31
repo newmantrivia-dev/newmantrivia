@@ -117,26 +117,28 @@ export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
         disableRoundMode={!canShowLastRound}
       />
 
-      <Card className="overflow-hidden border-white/15 bg-slate-950/40 shadow-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px]">
-            <TableHeader hasLastRound={canShowLastRound} />
-            <tbody className="divide-y divide-white/5">
-              <AnimatePresence mode="popLayout">
-                {displayTeams.map((ranking) => (
-                  <TeamRow
-                    key={ranking.team.id}
-                    ranking={ranking}
-                    totalRounds={data.totalRounds}
-                    highlightRound={data.lastCompletedRound}
-                    viewMode={effectiveViewMode}
-                  />
-                ))}
-              </AnimatePresence>
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <div className="hidden md:block">
+        <Card className="overflow-hidden border-white/15 bg-slate-950/40 shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px]">
+              <TableHeader hasLastRound={canShowLastRound} />
+              <tbody className="divide-y divide-white/5">
+                <AnimatePresence mode="popLayout">
+                  {displayTeams.map((ranking) => (
+                    <TeamRow
+                      key={ranking.team.id}
+                      ranking={ranking}
+                      totalRounds={data.totalRounds}
+                      highlightRound={data.lastCompletedRound}
+                      viewMode={effectiveViewMode}
+                    />
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
 
       {!hasTeams && <EmptyLeaderboardMessage isCompleted={isCompleted} />}
 
