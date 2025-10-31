@@ -49,7 +49,6 @@ export class AuthError extends Error {
 
 /**
  * Require an authenticated user, throw if not authenticated
- * Use this in Server Actions that require any authenticated user
  */
 export async function requireAuth(): Promise<User> {
   const user = await getAuthUser();
@@ -63,7 +62,6 @@ export async function requireAuth(): Promise<User> {
 
 /**
  * Require an admin user, throw if not authenticated or not admin
- * Use this in Server Actions that require admin privileges
  */
 export async function requireAdmin(): Promise<User> {
   const user = await requireAuth();
@@ -77,7 +75,6 @@ export async function requireAdmin(): Promise<User> {
 
 /**
  * Check if the current user is an admin
- * Returns false if not authenticated
  */
 export async function isAdmin(): Promise<boolean> {
   const user = await getAuthUser();

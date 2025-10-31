@@ -47,6 +47,9 @@ export type TeamRanking = {
     roundNumber: number;
     points: number;
   }[];
+  lastRoundPoints: number;
+  recentDelta: number;
+  averageScore: number;
 };
 
 export type LeaderboardData = {
@@ -55,6 +58,41 @@ export type LeaderboardData = {
   currentRound: number | null;
   totalRounds: number;
   lastUpdated: Date;
+  lastCompletedRound: number | null;
+  highlights: LeaderboardHighlights;
+  roundsSummary: RoundSummary[];
+};
+
+export type RoundSummary = {
+  roundNumber: number;
+  name?: string | null;
+  isBonus: boolean;
+  maxPoints?: number | null;
+  status: "completed" | "current" | "upcoming";
+  topTeamName?: string | null;
+  topScore?: number | null;
+};
+
+export type LeaderboardHighlights = {
+  leader: {
+    team: Team;
+    total: number;
+    leadOverNext: number | null;
+  } | null;
+  surging: {
+    team: Team;
+    delta: number;
+    roundNumber: number | null;
+  } | null;
+  roundHero: {
+    team: Team;
+    points: number;
+    roundNumber: number;
+  } | null;
+  tightRace: {
+    margin: number;
+    teams: [Team, Team];
+  } | null;
 };
 
 /**
