@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Crown,
   Flame,
+  Fuel,
   Hourglass,
   Sparkles,
   Trophy,
@@ -54,7 +55,7 @@ function EmptyState() {
     <div className="relative flex flex-1 items-center justify-center px-6 py-24">
       <Card className="relative z-10 w-full max-w-2xl overflow-hidden border-white/10 bg-white/5 p-12 text-center text-slate-100 shadow-2xl backdrop-blur">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/10">
-          <Sparkles className="h-10 w-10" />
+          <Fuel className="h-10 w-10" />
         </div>
         <h1 className="mt-6 text-3xl font-semibold tracking-tight">Trivia takes a breather</h1>
         <p className="mt-3 text-sm uppercase tracking-[0.35em] text-indigo-200">
