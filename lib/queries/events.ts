@@ -52,17 +52,21 @@ export async function getRecentlyCompletedEvents() {
 
 /**
  * Get all events for history page with pagination
+ * Includes both completed and archived events
  */
 export async function getHistoricalEvents(page: number = 1, limit: number = 20) {
   const offset = (page - 1) * limit;
 
   const allEvents = await db.query.events.findMany({
-    where: eq(events.status, "completed"),
+    where: (events, { or, eq }) => or(
+      eq(events.status, "completed"),
+      eq(events.status, "archived")
+    ),
     with: {
       teams: true,
       scores: true,
     },
-    orderBy: [desc(events.endedAt)],
+    orderBy: [desc(events.endedAt), desc(events.createdAt)],
     limit: limit + 1, // Get one extra to check if there are more
     offset,
   });
