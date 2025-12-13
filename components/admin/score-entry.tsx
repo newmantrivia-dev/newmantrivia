@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { saveScore } from "@/actions/scores";
 import { toast } from "sonner";
-import { Check, Edit2 } from "lucide-react";
+import { Check, Edit2, Save, RefreshCw } from "lucide-react";
 import type { Event } from "@/lib/types";
 
 interface ScoreEntryProps {
@@ -25,11 +25,13 @@ type TeamScore = {
   scoreId: string | null;
   isEditing: boolean;
   isSaving: boolean;
+  isModified: boolean;
 };
 
 export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
   const router = useRouter();
   const [teamScores, setTeamScores] = useState<TeamScore[]>([]);
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
   // Initialize team scores
   useEffect(() => {
@@ -46,6 +48,7 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
         scoreId: existingScore?.id || null,
         isEditing: !existingScore,
         isSaving: false,
+        isModified: false,
       };
     });
 
@@ -55,7 +58,9 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
   const handleScoreChange = (teamId: string, value: string) => {
     setTeamScores((prev) =>
       prev.map((ts) =>
-        ts.teamId === teamId ? { ...ts, currentScore: value } : ts
+        ts.teamId === teamId
+          ? { ...ts, currentScore: value, isModified: value !== ts.savedScore }
+          : ts
       )
     );
   };
@@ -95,11 +100,11 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
                 scoreId: result.data?.scoreId || ts.scoreId,
                 isEditing: false,
                 isSaving: false,
+                isModified: false,
               }
             : ts
         )
       );
-      router.refresh();
     } else {
       toast.error(result.error);
       setTeamScores((prev) =>
@@ -118,11 +123,75 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
     );
   };
 
+  const handleSaveAll = async () => {
+    const modifiedScores = teamScores.filter(ts => ts.isModified && ts.currentScore);
+
+    if (modifiedScores.length === 0) {
+      toast.info("No changes to save");
+      return;
+    }
+
+    setIsSavingAll(true);
+
+    try {
+      const savePromises = modifiedScores.map(async (teamScore) => {
+        const points = parseFloat(teamScore.currentScore);
+        if (isNaN(points)) {
+          throw new Error(`Invalid score for ${teamScore.teamName}`);
+        }
+
+        const result = await saveScore({
+          eventId: event.id,
+          teamId: teamScore.teamId,
+          roundNumber,
+          points,
+        });
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        return { teamId: teamScore.teamId, scoreId: result.data?.scoreId };
+      });
+
+      const results = await Promise.all(savePromises);
+
+      // Update all saved scores
+      setTeamScores((prev) =>
+        prev.map((ts) => {
+          const result = results.find(r => r.teamId === ts.teamId);
+          return result
+            ? {
+                ...ts,
+                savedScore: ts.currentScore,
+                scoreId: result.scoreId || ts.scoreId,
+                isEditing: false,
+                isModified: false,
+              }
+            : ts;
+        })
+      );
+
+      toast.success(`Saved ${modifiedScores.length} score${modifiedScores.length === 1 ? '' : 's'}!`);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save scores");
+    } finally {
+      setIsSavingAll(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    router.refresh();
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent, teamId: string) => {
     if (e.key === "Enter") {
       handleSave(teamId);
     }
   };
+
+  const modifiedCount = teamScores.filter(ts => ts.isModified).length;
 
   return (
     <div className="space-y-2">
@@ -191,6 +260,35 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
           </tbody>
         </table>
       </div>
+
+      {teamScores.length > 0 && (
+        <div className="flex items-center justify-between pt-4 border-t">
+          <div className="text-sm text-muted-foreground">
+            {modifiedCount > 0 && (
+              <span>{modifiedCount} score{modifiedCount === 1 ? '' : 's'} modified</span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isSavingAll}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button
+              onClick={handleSaveAll}
+              disabled={isSavingAll || modifiedCount === 0}
+              size="sm"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isSavingAll ? "Saving..." : `Save All (${modifiedCount})`}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {teamScores.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
