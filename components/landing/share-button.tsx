@@ -78,7 +78,7 @@ export function ShareLeaderboardButton({ eventName }: ShareLeaderboardButtonProp
         )}
         <span>{label}</span>
       </span>
-      <span className="absolute inset-0 -z-10 bg-gradient-to-r from-pink-500/30 via-blue-400/30 to-purple-500/30 opacity-0 transition-opacity group-hover:opacity-100" />
+      <span className="absolute inset-0 -z-10 bg-linear-to-r from-pink-500/30 via-blue-400/30 to-purple-500/30 opacity-0 transition-opacity group-hover:opacity-100" />
     </Button>
   );
 }

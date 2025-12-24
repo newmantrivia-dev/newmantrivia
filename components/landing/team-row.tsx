@@ -53,7 +53,7 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode }: Team
         }}
         className={cn(
           "group cursor-pointer text-white transition",
-          isPodium && "bg-gradient-to-r",
+          isPodium && "bg-linear-to-r",
           isPodium && podiumStyles[ranking.rank - 1]
         )}
         onClick={() => setIsExpanded((prev) => !prev)}

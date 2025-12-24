@@ -27,11 +27,11 @@ function LoadingState() {
 function BackdropLayers() {
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#220b2a] via-[#08172b] to-[#020813]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.18),_transparent_60%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(56,189,248,0.2),_transparent_65%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[length:140px_140px] opacity-30" />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:80px_80px] opacity-20 mix-blend-soft-light" />
+      <div className="absolute inset-0 bg-linear-to-br from-[#220b2a] via-[#08172b] to-[#020813]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(244,114,182,0.18),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(56,189,248,0.2),transparent_65%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[140px_140px] opacity-30" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-size-[80px_80px] opacity-20 mix-blend-soft-light" />
     </div>
   );
 }

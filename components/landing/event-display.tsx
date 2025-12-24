@@ -118,7 +118,7 @@ function UpcomingState({ event }: { event: LeaderboardData["event"] }) {
                 Save the date, polish the trivia chops, and meet us courtside for the next showdown.
               </p>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-gradient-to-tr from-sky-400/20 to-pink-500/20 p-6 shadow-lg">
+            <div className="rounded-3xl border border-white/10 bg-linear-to-tr from-sky-400/20 to-pink-500/20 p-6 shadow-lg">
               <p className="text-sm uppercase tracking-[0.4em] text-white/70">Bring the hype</p>
               <p className="mt-3 text-lg font-semibold text-white">
                 Share the event link with your team and the Newman community.
