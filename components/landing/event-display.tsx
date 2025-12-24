@@ -3,6 +3,7 @@ import { Leaderboard } from "@/components/landing/leaderboard";
 import { ConfettiEffect } from "@/components/landing/confetti";
 import { ShareLeaderboardButton } from "@/components/landing/share-button";
 import { RefreshPrompt } from "@/components/landing/refresh-prompt";
+import { RealtimeEventWrapper } from "@/components/landing/realtime-event-wrapper";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { LeaderboardData } from "@/lib/types";
@@ -42,12 +43,26 @@ export default async function EventDisplay() {
     return (
       <>
         <ConfettiEffect />
-        <ActiveOrCompletedState data={result.data} mode="completed" />
+        <RealtimeEventWrapper
+          eventId={result.data.event.id}
+          initialData={result.data}
+          mode="completed"
+        >
+          {(data) => <ActiveOrCompletedState data={data} mode="completed" />}
+        </RealtimeEventWrapper>
       </>
     );
   }
 
-  return <ActiveOrCompletedState data={result.data} mode="active" />;
+  return (
+    <RealtimeEventWrapper
+      eventId={result.data.event.id}
+      initialData={result.data}
+      mode="active"
+    >
+      {(data) => <ActiveOrCompletedState data={data} mode="active" />}
+    </RealtimeEventWrapper>
+  );
 }
 
 function EmptyState() {

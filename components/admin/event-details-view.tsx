@@ -22,7 +22,6 @@ export async function EventDetailsView({ eventId }: { eventId: string }) {
       notFound();
     }
   
-    // Calculate final standings
     const teamTotals = event.teams.map((team) => {
       const teamScores = event.scores.filter((s) => s.teamId === team.id);
       const roundScores = event.rounds.map((round) => {
@@ -38,7 +37,6 @@ export async function EventDetailsView({ eventId }: { eventId: string }) {
       return { team, total, roundScores };
     });
   
-    // Sort by total (descending)
     teamTotals.sort((a, b) => b.total - a.total);
   
     return (

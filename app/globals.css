@@ -1,6 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@keyframes highlight-pulse {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(251, 191, 36, 0.2);
+  }
+}
+
+.highlighted-row {
+  animation: highlight-pulse 2.5s ease-in-out;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { saveScore } from "@/actions/scores";
 import { toast } from "sonner";
 import { Check, Edit2, Save, RefreshCw } from "lucide-react";
+import { useRealtimeContext } from "./realtime-context";
+import { ConflictModal } from "./conflict-modal";
+import { cn } from "@/lib/utils";
 import type { Event } from "@/lib/types";
 
 interface ScoreEntryProps {
@@ -30,10 +33,21 @@ type TeamScore = {
 
 export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
   const router = useRouter();
+  const {
+    highlightedRows,
+    conflicts,
+    resolveConflict,
+    setEditing,
+  } = useRealtimeContext();
   const [teamScores, setTeamScores] = useState<TeamScore[]>([]);
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [currentConflict, setCurrentConflict] = useState<{
+    teamId: string;
+    roundNumber: number;
+    currentValue: string;
+    newValue: number;
+  } | null>(null);
 
-  // Initialize team scores
   useEffect(() => {
     const scores: TeamScore[] = event.teams.map((team) => {
       const existingScore = event.scores.find(
@@ -55,6 +69,23 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
     setTeamScores(scores);
   }, [event, roundNumber]);
 
+  useEffect(() => {
+    const conflict = conflicts.find((c) => c.roundNumber === roundNumber);
+    if (conflict) {
+      const teamScore = teamScores.find((ts) => ts.teamId === conflict.teamId);
+      if (teamScore && (teamScore.isEditing || teamScore.isModified)) {
+        setCurrentConflict({
+          teamId: conflict.teamId,
+          roundNumber: conflict.roundNumber,
+          currentValue: teamScore.currentScore,
+          newValue: conflict.newValue,
+        });
+      }
+    } else {
+      setCurrentConflict(null);
+    }
+  }, [conflicts, roundNumber, teamScores]);
+
   const handleScoreChange = (teamId: string, value: string) => {
     setTeamScores((prev) =>
       prev.map((ts) =>
@@ -65,7 +96,7 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
     );
   };
 
-  const handleSave = async (teamId: string) => {
+  const handleSave = useCallback(async (teamId: string, optimisticScoreId?: string) => {
     const teamScore = teamScores.find((ts) => ts.teamId === teamId);
     if (!teamScore) return;
 
@@ -75,47 +106,113 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
       return;
     }
 
-    // Update UI immediately
+    const optimisticUpdate = {
+      savedScore: teamScore.currentScore,
+      scoreId: optimisticScoreId || teamScore.scoreId || "temp",
+      isEditing: false,
+      isSaving: true,
+      isModified: false,
+    };
+
     setTeamScores((prev) =>
       prev.map((ts) =>
-        ts.teamId === teamId ? { ...ts, isSaving: true } : ts
+        ts.teamId === teamId ? { ...ts, ...optimisticUpdate } : ts
       )
     );
+    setEditing(teamId, roundNumber, false);
 
-    const result = await saveScore({
-      eventId: event.id,
-      teamId,
-      roundNumber,
-      points,
-    });
+    try {
+      const result = await saveScore({
+        eventId: event.id,
+        teamId,
+        roundNumber,
+        points,
+      });
 
-    if (result.success) {
-      toast.success("Score saved!");
+      if (result.success) {
+        toast.success("Score saved!");
+        setTeamScores((prev) =>
+          prev.map((ts) =>
+            ts.teamId === teamId
+              ? {
+                  ...ts,
+                  savedScore: teamScore.currentScore,
+                  scoreId: result.data?.scoreId || ts.scoreId,
+                  isEditing: false,
+                  isSaving: false,
+                  isModified: false,
+                }
+              : ts
+          )
+        );
+      } else {
+        toast.error(result.error);
+        setTeamScores((prev) =>
+          prev.map((ts) =>
+            ts.teamId === teamId
+              ? {
+                  ...ts,
+                  savedScore: ts.savedScore,
+                  isEditing: true,
+                  isSaving: false,
+                }
+              : ts
+          )
+        );
+        setEditing(teamId, roundNumber, true);
+      }
+    } catch {
+      toast.error("Failed to save score");
       setTeamScores((prev) =>
         prev.map((ts) =>
           ts.teamId === teamId
             ? {
                 ...ts,
-                savedScore: teamScore.currentScore,
-                scoreId: result.data?.scoreId || ts.scoreId,
-                isEditing: false,
+                savedScore: ts.savedScore,
+                isEditing: true,
                 isSaving: false,
-                isModified: false,
               }
             : ts
         )
       );
-    } else {
-      toast.error(result.error);
-      setTeamScores((prev) =>
-        prev.map((ts) =>
-          ts.teamId === teamId ? { ...ts, isSaving: false } : ts
-        )
-      );
+      setEditing(teamId, roundNumber, true);
     }
-  };
+  }, [teamScores, setEditing, roundNumber, event.id]);
+
+  const handleConflictResolve = useCallback(
+    async (accept: boolean) => {
+      if (!currentConflict) return;
+
+      const { teamId, roundNumber: conflictRound, newValue } = currentConflict;
+
+      if (accept) {
+        await handleSave(teamId);
+      } else {
+        setTeamScores((prev) =>
+          prev.map((ts) =>
+            ts.teamId === teamId
+              ? {
+                  ...ts,
+                  currentScore: newValue.toString(),
+                  savedScore: newValue.toString(),
+                  isEditing: false,
+                  isModified: false,
+                }
+              : ts
+          )
+        );
+        setEditing(teamId, conflictRound, false);
+        toast.info("Accepted new value from other admin");
+      }
+
+      resolveConflict(teamId, conflictRound, accept);
+      setCurrentConflict(null);
+    },
+    [currentConflict, handleSave, resolveConflict, setEditing]
+  );
 
   const handleEdit = (teamId: string) => {
+    setEditing(teamId, roundNumber, true);
     setTeamScores((prev) =>
       prev.map((ts) =>
         ts.teamId === teamId ? { ...ts, isEditing: true } : ts
@@ -156,7 +253,6 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
 
       const results = await Promise.all(savePromises);
 
-      // Update all saved scores
       setTeamScores((prev) =>
         prev.map((ts) => {
           const result = results.find(r => r.teamId === ts.teamId);
@@ -193,8 +289,31 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
 
   const modifiedCount = teamScores.filter(ts => ts.isModified).length;
 
+  const getRowKey = (teamId: string) => `${teamId}-${roundNumber}`;
+  const isRowHighlighted = (teamId: string) => highlightedRows.has(getRowKey(teamId));
+
   return (
     <div className="space-y-2">
+      <ConflictModal
+        conflict={
+          currentConflict
+            ? (() => {
+                const conflict = conflicts.find(
+                  (c) =>
+                    c.teamId === currentConflict.teamId &&
+                    c.roundNumber === currentConflict.roundNumber
+                );
+                return conflict
+                  ? {
+                      ...conflict,
+                      currentValue: currentConflict.currentValue,
+                    }
+                  : null;
+              })()
+            : null
+        }
+        onResolve={handleConflictResolve}
+      />
       <div className="border rounded-lg overflow-hidden">
         <table className="w-full">
           <thead className="bg-muted/50">
@@ -206,7 +325,13 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
           </thead>
           <tbody className="divide-y">
             {teamScores.map((teamScore) => (
-              <tr key={teamScore.teamId} className="hover:bg-muted/50">
+              <tr
+                key={teamScore.teamId}
+                className={cn(
+                  "hover:bg-muted/50 transition-colors",
+                  isRowHighlighted(teamScore.teamId) && "highlighted-row"
+                )}
+              >
                 <td className="px-4 py-3">
                   <span className="font-medium">{teamScore.teamName}</span>
                 </td>

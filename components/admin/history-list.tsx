@@ -27,7 +27,6 @@ export async function HistoryList({ page = 1 }: { page?: number }) {
         {result.events.length > 0 ? (
           <div className="space-y-4">
             {result.events.map((event) => {
-              // Calculate winner
               const teamTotals = event.teams?.map((team) => {
                 const teamScores = event.scores?.filter((s) => s.teamId === team.id) || [];
                 const total = teamScores.reduce((sum, score) => sum + parseFloat(score.points), 0);

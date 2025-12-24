@@ -34,7 +34,6 @@ export function EventDetailsActions({ event }: EventDetailsActionsProps) {
     const result = await exportEventCSV(event.id);
 
     if (result.success) {
-      // Create blob and trigger download
       const blob = new Blob([result.data.csv], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

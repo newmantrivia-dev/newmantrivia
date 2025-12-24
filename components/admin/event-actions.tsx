@@ -17,7 +17,7 @@ import { addTeam } from "@/actions/teams";
 import { addRound } from "@/actions/rounds";
 import { endEvent } from "@/actions/events";
 import { toast } from "sonner";
-import { Plus, Flag, Users, Target } from "lucide-react";
+import { Flag, Users, Target } from "lucide-react";
 import type { Event } from "@/lib/types";
 
 interface EventActionsProps {
@@ -30,13 +30,11 @@ interface EventActionsProps {
 export function EventActions({ event }: EventActionsProps) {
   const router = useRouter();
 
-  // Add Team Dialog
   const [showAddTeamDialog, setShowAddTeamDialog] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [joinedRound, setJoinedRound] = useState(event.currentRound?.toString() || "1");
   const [isAddingTeam, setIsAddingTeam] = useState(false);
 
-  // Add Round Dialog
   const [showAddRoundDialog, setShowAddRoundDialog] = useState(false);
   const [roundName, setRoundName] = useState("");
   const [roundDescription, setRoundDescription] = useState("");
@@ -44,7 +42,6 @@ export function EventActions({ event }: EventActionsProps) {
   const [isBonus, setIsBonus] = useState(false);
   const [isAddingRound, setIsAddingRound] = useState(false);
 
-  // End Event Dialog
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
 

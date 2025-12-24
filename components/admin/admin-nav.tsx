@@ -15,7 +15,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { adminPaths } from "@/lib/paths";
 import { toast } from "sonner";
-import { Calendar, History, FileText, LogOut, User as UserIcon } from "lucide-react";
+import { Calendar, History, FileText, LogOut } from "lucide-react";
 import type { User as AuthUser } from "@/lib/auth";
 
 export function AdminNav() {
@@ -29,7 +29,7 @@ export function AdminNav() {
       toast.success("Signed out successfully");
       router.push(adminPaths.signIn);
       router.refresh();
-    } catch (error) {
+    } catch {
       toast.error("Failed to sign out");
     }
   };

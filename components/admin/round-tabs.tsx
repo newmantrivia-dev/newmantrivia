@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +9,9 @@ import { ScoreEntry } from "./score-entry";
 import { moveToNextRound } from "@/actions/events";
 import { toast } from "sonner";
 import { ChevronRight, Check } from "lucide-react";
+import { useAblyEvent } from "@/lib/ably/hooks";
+import { ABLY_EVENTS } from "@/lib/ably/config";
+import { useSession } from "@/lib/auth/client";
 import type { Event } from "@/lib/types";
 
 interface RoundTabsProps {
@@ -22,13 +25,36 @@ interface RoundTabsProps {
 
 export function RoundTabs({ event, currentRound }: RoundTabsProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id || null;
   const [activeTab, setActiveTab] = useState(currentRound.toString());
   const [isMoving, setIsMoving] = useState(false);
+  const [optimisticCurrentRound, setOptimisticCurrentRound] = useState<number | null>(null);
+
+  useEffect(() => {
+    setActiveTab(currentRound.toString());
+    setOptimisticCurrentRound(null);
+  }, [currentRound]);
+
+  useAblyEvent(
+    event.id,
+    ABLY_EVENTS.ROUND_CHANGED,
+    useCallback(
+      (payload) => {
+        if (currentUserId !== payload.changedBy) {
+          setOptimisticCurrentRound(payload.newRound);
+          setActiveTab(payload.newRound.toString());
+        }
+      },
+      [currentUserId]
+    )
+  );
+
+  const effectiveCurrentRound = optimisticCurrentRound ?? currentRound;
 
   const handleMoveToNext = async () => {
     const currentRoundNum = parseInt(activeTab);
 
-    // Check if all teams have scores for current round
     const teamsWithoutScores = event.teams.filter((team) => {
       return !event.scores.some(
         (score) => score.teamId === team.id && score.roundNumber === currentRoundNum
@@ -42,17 +68,30 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
       return;
     }
 
-    setIsMoving(true);
-    const result = await moveToNextRound(event.id);
+    const nextRound = currentRoundNum + 1;
 
-    if (result.success) {
-      toast.success(`Moved to round ${result.data?.nextRound}!`);
-      setActiveTab(result.data?.nextRound.toString() || activeTab);
-      router.refresh();
-    } else {
-      toast.error(result.error);
+    setIsMoving(true);
+    setOptimisticCurrentRound(nextRound);
+    setActiveTab(nextRound.toString());
+
+    try {
+      const result = await moveToNextRound(event.id);
+
+      if (result.success) {
+        toast.success(`Moved to round ${result.data?.nextRound}!`);
+        router.refresh();
+      } else {
+        toast.error(result.error);
+        setOptimisticCurrentRound(null);
+        setActiveTab(currentRoundNum.toString());
+      }
+    } catch {
+      toast.error("Failed to move to next round");
+      setOptimisticCurrentRound(null);
+      setActiveTab(currentRoundNum.toString());
+    } finally {
+      setIsMoving(false);
     }
-    setIsMoving(false);
   };
 
   const isRoundComplete = (roundNumber: number) => {
@@ -73,7 +112,7 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
         <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto">
           {event.rounds.map((round) => {
             const isComplete = isRoundComplete(round.roundNumber);
-            const isCurrent = round.roundNumber === currentRound;
+            const isCurrent = round.roundNumber === effectiveCurrentRound;
 
             return (
               <TabsTrigger
@@ -111,14 +150,14 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
                 </p>
               </div>
 
-              {round.roundNumber === currentRound &&
+              {round.roundNumber === effectiveCurrentRound &&
                 round.roundNumber < event.rounds.length && (
                   <Button onClick={handleMoveToNext} disabled={isMoving}>
                     {isMoving ? (
                       "Moving..."
                     ) : (
                       <>
-                        Move to Round {currentRound + 1}
+                        Move to Round {effectiveCurrentRound + 1}
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </>
                     )}
