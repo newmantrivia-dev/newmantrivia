@@ -1,11 +1,7 @@
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
-import { eq, desc, and, gte } from "drizzle-orm";
-import type { Event } from "@/lib/types";
+import { eq, desc } from "drizzle-orm";
 
-/**
- * Get all active events
- */
 export async function getActiveEvents() {
   return await db.query.events.findMany({
     where: eq(events.status, "active"),
@@ -19,9 +15,6 @@ export async function getActiveEvents() {
   });
 }
 
-/**
- * Get all upcoming events
- */
 export async function getUpcomingEvents() {
   return await db.query.events.findMany({
     where: eq(events.status, "upcoming"),
@@ -29,9 +22,6 @@ export async function getUpcomingEvents() {
   });
 }
 
-/**
- * Get all draft events
- */
 export async function getDraftEvents() {
   return await db.query.events.findMany({
     where: eq(events.status, "draft"),
@@ -39,9 +29,6 @@ export async function getDraftEvents() {
   });
 }
 
-/**
- * Get recently completed events (last 3)
- */
 export async function getRecentlyCompletedEvents() {
   return await db.query.events.findMany({
     where: eq(events.status, "completed"),
@@ -50,10 +37,6 @@ export async function getRecentlyCompletedEvents() {
   });
 }
 
-/**
- * Get all events for history page with pagination
- * Includes both completed and archived events
- */
 export async function getHistoricalEvents(page: number = 1, limit: number = 20) {
   const offset = (page - 1) * limit;
 
@@ -67,7 +50,7 @@ export async function getHistoricalEvents(page: number = 1, limit: number = 20) 
       scores: true,
     },
     orderBy: [desc(events.endedAt), desc(events.createdAt)],
-    limit: limit + 1, // Get one extra to check if there are more
+    limit: limit + 1,
     offset,
   });
 
@@ -81,9 +64,6 @@ export async function getHistoricalEvents(page: number = 1, limit: number = 20) 
   };
 }
 
-/**
- * Get archived events
- */
 export async function getArchivedEvents(page: number = 1, limit: number = 20) {
   const offset = (page - 1) * limit;
 
@@ -104,9 +84,6 @@ export async function getArchivedEvents(page: number = 1, limit: number = 20) {
   };
 }
 
-/**
- * Get single event by ID with all relations
- */
 export async function getEventById(eventId: string) {
   return await db.query.events.findFirst({
     where: eq(events.id, eventId),

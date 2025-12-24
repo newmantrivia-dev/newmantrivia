@@ -13,13 +13,11 @@ export function ConfettiEffect() {
   useEffect(() => {
     setIsClient(true);
 
-    // Set initial dimensions
     setWindowDimensions({
       width: window.innerWidth,
       height: window.innerHeight,
     });
 
-    // Update dimensions on resize
     function handleResize() {
       setWindowDimensions({
         width: window.innerWidth,
@@ -31,7 +29,6 @@ export function ConfettiEffect() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Don't render on server
   if (!isClient) {
     return null;
   }

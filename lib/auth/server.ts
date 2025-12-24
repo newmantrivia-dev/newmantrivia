@@ -2,12 +2,6 @@ import { headers } from "next/headers";
 import { cache } from "react";
 import type { User } from "@/lib/auth";
 
-/**
- * Get the authenticated user from request headers (injected by middleware)
- * Only works in Server Components and Server Actions
- * Cached per request to prevent duplicate header reads
- * Returns null if headers are missing (shouldn't happen if middleware is working)
- */
 export const getAuthUser = cache(async (): Promise<User | null> => {
   const headersList = await headers();
 
@@ -16,12 +10,10 @@ export const getAuthUser = cache(async (): Promise<User | null> => {
   const userName = headersList.get("x-user-name");
   const userRole = headersList.get("x-user-role");
 
-  // If any required header is missing, return null
   if (!userId || !userEmail || !userName) {
     return null;
   }
 
-  // Construct user object matching Better Auth's User type
   return {
     id: userId,
     email: userEmail,
@@ -34,9 +26,6 @@ export const getAuthUser = cache(async (): Promise<User | null> => {
   } as User;
 });
 
-/**
- * Custom error class for authentication errors
- */
 export class AuthError extends Error {
   constructor(
     message: string,
@@ -47,9 +36,6 @@ export class AuthError extends Error {
   }
 }
 
-/**
- * Require an authenticated user, throw if not authenticated
- */
 export async function requireAuth(): Promise<User> {
   const user = await getAuthUser();
 
@@ -60,9 +46,6 @@ export async function requireAuth(): Promise<User> {
   return user;
 }
 
-/**
- * Require an admin user, throw if not authenticated or not admin
- */
 export async function requireAdmin(): Promise<User> {
   const user = await requireAuth();
 
@@ -73,9 +56,6 @@ export async function requireAdmin(): Promise<User> {
   return user;
 }
 
-/**
- * Check if the current user is an admin
- */
 export async function isAdmin(): Promise<boolean> {
   const user = await getAuthUser();
   return user?.role === "admin";

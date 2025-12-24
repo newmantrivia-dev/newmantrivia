@@ -1,10 +1,7 @@
 import { db } from "@/lib/db";
 import { scoreAuditLog, events } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
-/**
- * Get audit logs with optional filtering
- */
 export async function getAuditLogs({
   eventId,
   page = 1,
@@ -40,9 +37,6 @@ export async function getAuditLogs({
   };
 }
 
-/**
- * Get all events for filter dropdown
- */
 export async function getEventsForFilter() {
   return await db.query.events.findMany({
     orderBy: [desc(events.createdAt)],

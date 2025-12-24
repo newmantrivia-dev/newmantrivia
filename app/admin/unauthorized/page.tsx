@@ -16,7 +16,7 @@ export default function UnauthorizedPage() {
       toast.success("Signed out successfully");
       router.push(adminPaths.signIn);
       router.refresh();
-    } catch (error) {
+    } catch {
       toast.error("Failed to sign out");
     }
   };

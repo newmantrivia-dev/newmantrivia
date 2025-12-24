@@ -1,8 +1,5 @@
 import type { events, rounds, teams, scores, scoreAuditLog } from "@/lib/db/schema";
 
-/**
- * Type utilities for inferring types from Drizzle schema
- */
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 
@@ -18,9 +15,6 @@ export type NewScore = typeof scores.$inferInsert;
 export type AuditLog = typeof scoreAuditLog.$inferSelect;
 export type NewAuditLog = typeof scoreAuditLog.$inferInsert;
 
-/**
- * Extended types with relations for complex queries
- */
 export type EventWithDetails = Event & {
   rounds: Round[];
   teams: Team[];
@@ -36,9 +30,6 @@ export type EventWithTeamsAndScores = Event & {
   rounds: Round[];
 };
 
-/**
- * Calculated types for leaderboard display
- */
 export type TeamRanking = {
   team: Team;
   totalScore: number;
@@ -95,16 +86,10 @@ export type LeaderboardHighlights = {
   } | null;
 };
 
-/**
- * Server Action response types
- */
 export type ActionResponse<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-/**
- * Form input types
- */
 export type CreateEventInput = {
   name: string;
   description?: string;
@@ -146,9 +131,6 @@ export type AddRoundInput = {
   isBonus: boolean;
 };
 
-/**
- * Filter and pagination types
- */
 export type EventFilter = {
   status?: Event["status"];
   search?: string;

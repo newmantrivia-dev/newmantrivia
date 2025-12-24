@@ -1,10 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { boolean, decimal, integer, pgTable, text, timestamp, index, pgEnum, uuid, unique } from 'drizzle-orm/pg-core';
 
-// =============================================================================
-// ENUMS
-// =============================================================================
-
 export const roles = pgEnum("role", ["user", "admin"]);
 
 export const eventStatus = pgEnum("event_status", [
@@ -20,10 +16,6 @@ export const auditAction = pgEnum("audit_action", [
   "updated",
   "deleted"
 ]);
-
-// =============================================================================
-// BETTER AUTH TABLES
-// =============================================================================
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -88,14 +80,6 @@ export const verification = pgTable("verification", {
     .notNull(),
 });
 
-// =============================================================================
-// TRIVIA APPLICATION TABLES
-// =============================================================================
-
-/**
- * Events table - stores trivia event configurations
- * Status flow: draft → upcoming → active → completed → archived
- */
 export const events = pgTable(
   "events",
   {
@@ -120,14 +104,10 @@ export const events = pgTable(
     index("events_status_idx").on(table.status),
     index("events_created_by_idx").on(table.createdBy),
     index("events_started_at_idx").on(table.startedAt),
-    // Composite index for completed events query (status + ended_at filter)
     index("events_status_ended_at_idx").on(table.status, table.endedAt),
   ]
 );
 
-/**
- * Rounds table - stores round configurations for each event
- */
 export const rounds = pgTable(
   "rounds",
   {
@@ -151,9 +131,6 @@ export const rounds = pgTable(
   ]
 );
 
-/**
- * Teams table - stores team registrations for events
- */
 export const teams = pgTable(
   "teams",
   {
@@ -178,9 +155,6 @@ export const teams = pgTable(
   ]
 );
 
-/**
- * Scores table - stores individual round scores for teams
- */
 export const scores = pgTable(
   "scores",
   {
@@ -214,9 +188,6 @@ export const scores = pgTable(
   ]
 );
 
-/**
- * Score audit log table - tracks all score changes for accountability
- */
 export const scoreAuditLog = pgTable(
   "score_audit_log",
   {
@@ -248,10 +219,6 @@ export const scoreAuditLog = pgTable(
     index("audit_changed_at_idx").on(table.changedAt),
   ]
 );
-
-// =============================================================================
-// RELATIONS
-// =============================================================================
 
 export const userRelations = relations(user, ({ many }) => ({
   eventsCreated: many(events),
