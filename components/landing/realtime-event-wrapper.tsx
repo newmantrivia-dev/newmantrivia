@@ -1,17 +1,31 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAblyEvent } from '@/lib/ably/hooks';
 import { ABLY_EVENTS } from '@/lib/ably/config';
 import type { LeaderboardData } from '@/lib/types';
 import { ConnectionStatus } from '@/components/ably/connection-status';
 
+interface RealtimeEventContextValue {
+  data: LeaderboardData;
+}
+
+const RealtimeEventContext = createContext<RealtimeEventContextValue | null>(null);
+
+export function useRealtimeEventData() {
+  const context = useContext(RealtimeEventContext);
+  if (!context) {
+    throw new Error('useRealtimeEventData must be used within RealtimeEventWrapper');
+  }
+  return context.data;
+}
+
 interface RealtimeEventWrapperProps {
   eventId: string;
   initialData: LeaderboardData;
   mode: 'active' | 'completed';
-  children: (data: LeaderboardData) => React.ReactNode;
+  children: React.ReactNode;
 }
 
 export function RealtimeEventWrapper({
@@ -73,10 +87,10 @@ export function RealtimeEventWrapper({
   };
 
   return (
-    <>
-      {children(displayData)}
+    <RealtimeEventContext.Provider value={{ data: displayData }}>
+      {children}
       <ConnectionStatus variant="public" />
-    </>
+    </RealtimeEventContext.Provider>
   );
 }
 

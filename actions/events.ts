@@ -140,6 +140,17 @@ export async function startEvent(
       return { success: false, error: "Cannot start a completed or archived event" };
     }
 
+    const existingActiveEvent = await db.query.events.findFirst({
+      where: eq(events.status, "active"),
+    });
+
+    if (existingActiveEvent && existingActiveEvent.id !== eventId) {
+      return {
+        success: false,
+        error: `Cannot start event: "${existingActiveEvent.name}" is already active. Please end it first.`,
+      };
+    }
+
     await db
       .update(events)
       .set({
@@ -275,6 +286,17 @@ export async function reopenEvent(
 
     if (event.status !== "completed") {
       return { success: false, error: "Only completed events can be reopened" };
+    }
+
+    const existingActiveEvent = await db.query.events.findFirst({
+      where: eq(events.status, "active"),
+    });
+
+    if (existingActiveEvent && existingActiveEvent.id !== eventId) {
+      return {
+        success: false,
+        error: `Cannot reopen event: "${existingActiveEvent.name}" is already active. Please end it first.`,
+      };
     }
 
     await db

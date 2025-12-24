@@ -56,7 +56,7 @@ export type AblyEventPayloads = {
 };
 
 export function getEventChannel(eventId: string): string {
-  return `event-${eventId}`;
+  return `event:${eventId}`;
 }
 
 export function isValidEventId(eventId: string): boolean {
