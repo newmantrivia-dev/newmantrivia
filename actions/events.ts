@@ -2,22 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { events, rounds, teams, scores, scoreAuditLog } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth/server";
+import { events, rounds, teams } from "@/lib/db/schema";
+import { requireAdmin, getAuthUser } from "@/lib/auth/server";
 import { publicPaths, adminPaths } from "@/lib/paths";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { ActionResponse, CreateEventInput, UpdateEventInput } from "@/lib/types";
+import { publishEvent } from "@/lib/ably/server";
+import { ABLY_EVENTS } from "@/lib/ably/config";
 
-/**
- * Create a new event with rounds and optionally teams
- */
 export async function createEvent(
   input: CreateEventInput
 ): Promise<ActionResponse<{ eventId: string }>> {
   try {
     const user = await requireAdmin();
 
-    // Validate input
     if (!input.name || input.name.trim().length === 0) {
       return { success: false, error: "Event name is required" };
     }
@@ -26,12 +24,9 @@ export async function createEvent(
       return { success: false, error: "At least one round is required" };
     }
 
-    // Determine status based on scheduled date
     const status = input.scheduledDate ? "upcoming" : "draft";
 
-    // Create event with rounds and teams in a transaction
     const eventId = await db.transaction(async (tx) => {
-      // Insert event
       const [event] = await tx
         .insert(events)
         .values({
@@ -43,7 +38,6 @@ export async function createEvent(
         })
         .returning({ id: events.id });
 
-      // Insert rounds
       for (let i = 0; i < input.rounds.length; i++) {
         const round = input.rounds[i];
         await tx.insert(rounds).values({
@@ -56,7 +50,6 @@ export async function createEvent(
         });
       }
 
-      // Insert teams if provided
       if (input.teams && input.teams.length > 0) {
         for (const team of input.teams) {
           const teamName = team.name.trim();
@@ -85,16 +78,12 @@ export async function createEvent(
   }
 }
 
-/**
- * Update an existing draft or upcoming event
- */
 export async function updateEvent(
   input: UpdateEventInput
 ): Promise<ActionResponse> {
   try {
-    const user = await requireAdmin();
+    await requireAdmin();
 
-    // Get existing event
     const event = await db.query.events.findFirst({
       where: eq(events.id, input.id),
     });
@@ -103,12 +92,10 @@ export async function updateEvent(
       return { success: false, error: "Event not found" };
     }
 
-    // Only allow editing draft and upcoming events
     if (event.status !== "draft" && event.status !== "upcoming") {
       return { success: false, error: "Cannot edit an active or completed event" };
     }
 
-    // Update event
     await db
       .update(events)
       .set({
@@ -131,9 +118,6 @@ export async function updateEvent(
   }
 }
 
-/**
- * Start an event (change status to active)
- */
 export async function startEvent(
   eventId: string
 ): Promise<ActionResponse> {
@@ -178,9 +162,6 @@ export async function startEvent(
   }
 }
 
-/**
- * End an event (change status to completed)
- */
 export async function endEvent(
   eventId: string
 ): Promise<ActionResponse> {
@@ -207,6 +188,16 @@ export async function endEvent(
       })
       .where(eq(events.id, eventId));
 
+    // Publish real-time event
+    try {
+      await publishEvent(eventId, ABLY_EVENTS.EVENT_STATUS_CHANGED, {
+        status: 'completed',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish event status change:', error);
+    }
+
     revalidatePath(adminPaths.root);
     revalidatePath(adminPaths.events.byId(eventId));
     revalidatePath(publicPaths.home);
@@ -220,9 +211,6 @@ export async function endEvent(
   }
 }
 
-/**
- * Archive a completed event
- */
 export async function archiveEvent(
   eventId: string
 ): Promise<ActionResponse> {
@@ -248,6 +236,16 @@ export async function archiveEvent(
       })
       .where(eq(events.id, eventId));
 
+    // Publish real-time event
+    try {
+      await publishEvent(eventId, ABLY_EVENTS.EVENT_STATUS_CHANGED, {
+        status: 'archived',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish event status change:', error);
+    }
+
     revalidatePath(adminPaths.root);
     revalidatePath(adminPaths.history);
     revalidatePath(publicPaths.home);
@@ -261,9 +259,6 @@ export async function archiveEvent(
   }
 }
 
-/**
- * Reopen a completed event (change status back to active)
- */
 export async function reopenEvent(
   eventId: string
 ): Promise<ActionResponse> {
@@ -290,6 +285,16 @@ export async function reopenEvent(
       })
       .where(eq(events.id, eventId));
 
+    // Publish real-time event
+    try {
+      await publishEvent(eventId, ABLY_EVENTS.EVENT_STATUS_CHANGED, {
+        status: 'active',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish event status change:', error);
+    }
+
     revalidatePath(adminPaths.root);
     revalidatePath(adminPaths.events.byId(eventId));
     revalidatePath(publicPaths.home);
@@ -303,9 +308,6 @@ export async function reopenEvent(
   }
 }
 
-/**
- * Move to the next round
- */
 export async function moveToNextRound(
   eventId: string
 ): Promise<ActionResponse<{ nextRound: number }>> {
@@ -331,7 +333,6 @@ export async function moveToNextRound(
 
     const currentRound = event.currentRound || 1;
 
-    // Verify all teams have scores for current round
     const teamsWithoutScores = event.teams.filter((team) => {
       return !event.scores.some(
         (score) =>
@@ -355,6 +356,22 @@ export async function moveToNextRound(
       })
       .where(eq(events.id, eventId));
 
+    // Publish real-time event
+    try {
+      const user = await getAuthUser();
+      const totalRounds = event.rounds.length;
+
+      await publishEvent(eventId, ABLY_EVENTS.ROUND_CHANGED, {
+        newRound: nextRound,
+        totalRounds,
+        changedBy: user?.id || 'unknown',
+        changedByName: user?.name || user?.email || 'Unknown Admin',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish round change:', error);
+    }
+
     revalidatePath(adminPaths.events.byId(eventId));
     revalidatePath(publicPaths.home);
     return { success: true, data: { nextRound } };
@@ -367,9 +384,6 @@ export async function moveToNextRound(
   }
 }
 
-/**
- * Delete an event (only draft and upcoming events)
- */
 export async function deleteEvent(
   eventId: string
 ): Promise<ActionResponse> {
@@ -391,7 +405,6 @@ export async function deleteEvent(
       };
     }
 
-    // Delete will cascade to rounds, teams, scores, and audit logs
     await db.delete(events).where(eq(events.id, eventId));
 
     revalidatePath(adminPaths.root);

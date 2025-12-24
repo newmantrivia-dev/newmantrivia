@@ -1,21 +1,17 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { events, teams, rounds, scores } from "@/lib/db/schema";
+import { events, teams, rounds } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/server";
 import { eq, asc } from "drizzle-orm";
 import type { ActionResponse } from "@/lib/types";
 
-/**
- * Export event results as CSV
- */
 export async function exportEventCSV(
   eventId: string
 ): Promise<ActionResponse<{ csv: string; filename: string }>> {
   try {
     await requireAdmin();
 
-    // Fetch event with all related data
     const event = await db.query.events.findFirst({
       where: eq(events.id, eventId),
       with: {
@@ -33,7 +29,6 @@ export async function exportEventCSV(
       return { success: false, error: "Event not found" };
     }
 
-    // Build CSV headers
     const headers = ["Rank", "Team Name"];
     event.rounds.forEach((round) => {
       const roundLabel = round.roundName
@@ -43,7 +38,6 @@ export async function exportEventCSV(
     });
     headers.push("Total Score");
 
-    // Calculate team totals and rankings
     const teamData = event.teams.map((team) => {
       const teamScores = event.scores.filter((score) => score.teamId === team.id);
 
@@ -61,29 +55,23 @@ export async function exportEventCSV(
       };
     });
 
-    // Sort by total score (descending) to get rankings
     teamData.sort((a, b) => b.totalScore - a.totalScore);
 
-    // Build CSV rows
     const rows = teamData.map((data, index) => {
       const rank = index + 1;
       const row = [rank, escapeCSV(data.teamName)];
 
-      // Add round scores
       data.roundScores.forEach((score) => {
         row.push(score.toString());
       });
 
-      // Add total score
       row.push(data.totalScore.toString());
 
       return row.join(",");
     });
 
-    // Combine headers and rows
     const csvContent = [headers.join(","), ...rows].join("\n");
 
-    // Generate filename
     const eventName = event.name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = `${eventName}_results_${dateStr}.csv`;
@@ -104,9 +92,6 @@ export async function exportEventCSV(
   }
 }
 
-/**
- * Escape CSV field if it contains special characters
- */
 function escapeCSV(field: string): string {
   if (field.includes(",") || field.includes('"') || field.includes("\n")) {
     return `"${field.replace(/"/g, '""')}"`;
@@ -114,16 +99,12 @@ function escapeCSV(field: string): string {
   return field;
 }
 
-/**
- * Export audit log as CSV for an event
- */
 export async function exportAuditLogCSV(
   eventId: string
 ): Promise<ActionResponse<{ csv: string; filename: string }>> {
   try {
     await requireAdmin();
 
-    // Fetch event with audit logs
     const event = await db.query.events.findFirst({
       where: eq(events.id, eventId),
       with: {
@@ -141,7 +122,6 @@ export async function exportAuditLogCSV(
       return { success: false, error: "Event not found" };
     }
 
-    // Build CSV headers
     const headers = [
       "Timestamp",
       "Action",
@@ -153,7 +133,6 @@ export async function exportAuditLogCSV(
       "Reason",
     ];
 
-    // Build CSV rows
     const rows = event.auditLogs.map((log) => {
       return [
         new Date(log.changedAt).toISOString(),
@@ -167,10 +146,8 @@ export async function exportAuditLogCSV(
       ].join(",");
     });
 
-    // Combine headers and rows
     const csvContent = [headers.join(","), ...rows].join("\n");
 
-    // Generate filename
     const eventName = event.name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = `${eventName}_audit_log_${dateStr}.csv`;

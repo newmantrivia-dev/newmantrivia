@@ -2,15 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { scores, scoreAuditLog, events } from "@/lib/db/schema";
+import { scores, scoreAuditLog, events, teams } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/server";
 import { publicPaths, adminPaths } from "@/lib/paths";
 import { eq, and } from "drizzle-orm";
 import type { ActionResponse, SaveScoreInput } from "@/lib/types";
+import { publishEvent } from "@/lib/ably/server";
+import { ABLY_EVENTS } from "@/lib/ably/config";
 
-/**
- * Validate score value
- */
 function validateScore(points: number): { valid: boolean; error?: string } {
   if (isNaN(points)) {
     return { valid: false, error: "Score must be a valid number" };
@@ -24,7 +23,6 @@ function validateScore(points: number): { valid: boolean; error?: string } {
     return { valid: false, error: "Score cannot exceed 1000 points" };
   }
 
-  // Check decimal places (max 2)
   const decimalPlaces = (points.toString().split(".")[1] || "").length;
   if (decimalPlaces > 2) {
     return { valid: false, error: "Score cannot have more than 2 decimal places" };
@@ -33,23 +31,17 @@ function validateScore(points: number): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-/**
- * Save or update a score for a team in a specific round
- * Creates audit log entry for all changes
- */
 export async function saveScore(
   input: SaveScoreInput
 ): Promise<ActionResponse<{ scoreId: string }>> {
   try {
     const user = await requireAdmin();
 
-    // Validate score
     const validation = validateScore(input.points);
     if (!validation.valid) {
       return { success: false, error: validation.error! };
     }
 
-    // Check if score already exists
     const existingScore = await db.query.scores.findFirst({
       where: and(
         eq(scores.teamId, input.teamId),
@@ -65,7 +57,6 @@ export async function saveScore(
 
     await db.transaction(async (tx) => {
       if (existingScore) {
-        // Update existing score
         action = "updated";
         oldPoints = existingScore.points;
         scoreId = existingScore.id;
@@ -77,7 +68,6 @@ export async function saveScore(
           })
           .where(eq(scores.id, existingScore.id));
       } else {
-        // Create new score
         const [newScore] = await tx
           .insert(scores)
           .values({
@@ -92,7 +82,6 @@ export async function saveScore(
         scoreId = newScore.id;
       }
 
-      // Create audit log entry
       await tx.insert(scoreAuditLog).values({
         scoreId,
         eventId: input.eventId,
@@ -105,7 +94,6 @@ export async function saveScore(
         changedBy: user.id,
       });
 
-      // Update event's updatedAt timestamp to trigger leaderboard refresh
       await tx
         .update(events)
         .set({
@@ -113,6 +101,26 @@ export async function saveScore(
         })
         .where(eq(events.id, input.eventId));
     });
+
+    try {
+      const team = await db.query.teams.findFirst({
+        where: eq(teams.id, input.teamId),
+        columns: { name: true },
+      });
+
+      await publishEvent(input.eventId, ABLY_EVENTS.SCORE_UPDATED, {
+        teamId: input.teamId,
+        teamName: team?.name || 'Unknown Team',
+        roundNumber: input.roundNumber,
+        points: input.points,
+        oldPoints: existingScore ? parseFloat(existingScore.points) : undefined,
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish score update:', error);
+    }
 
     revalidatePath(adminPaths.events.byId(input.eventId));
     revalidatePath(publicPaths.home);
@@ -126,10 +134,6 @@ export async function saveScore(
   }
 }
 
-/**
- * Delete a score
- * Creates audit log entry for deletion
- */
 export async function deleteScore(
   scoreId: string,
   eventId: string
@@ -146,7 +150,6 @@ export async function deleteScore(
     }
 
     await db.transaction(async (tx) => {
-      // Create audit log before deletion
       await tx.insert(scoreAuditLog).values({
         scoreId: score.id,
         eventId: score.eventId,
@@ -159,9 +162,26 @@ export async function deleteScore(
         changedBy: user.id,
       });
 
-      // Delete score
       await tx.delete(scores).where(eq(scores.id, scoreId));
     });
+
+    try {
+      const team = await db.query.teams.findFirst({
+        where: eq(teams.id, score.teamId),
+        columns: { name: true },
+      });
+
+      await publishEvent(eventId, ABLY_EVENTS.SCORE_DELETED, {
+        teamId: score.teamId,
+        teamName: team?.name || 'Unknown Team',
+        roundNumber: score.roundNumber,
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish score deletion:', error);
+    }
 
     revalidatePath(adminPaths.events.byId(eventId));
     revalidatePath(publicPaths.home);
@@ -175,22 +195,17 @@ export async function deleteScore(
   }
 }
 
-/**
- * Batch save scores for multiple teams in a round
- * Useful for bulk score entry
- */
 export async function batchSaveScores(
   eventId: string,
   roundNumber: number,
   teamScores: Array<{ teamId: string; points: number; reason?: string }>
 ): Promise<ActionResponse<{ saved: number; failed: number }>> {
   try {
-    const user = await requireAdmin();
+    await requireAdmin();
 
     let saved = 0;
     let failed = 0;
 
-    // Process each score
     for (const teamScore of teamScores) {
       const result = await saveScore({
         eventId,

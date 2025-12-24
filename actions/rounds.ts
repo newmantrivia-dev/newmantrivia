@@ -8,17 +8,12 @@ import { adminPaths } from "@/lib/paths";
 import { eq, desc } from "drizzle-orm";
 import type { ActionResponse, AddRoundInput } from "@/lib/types";
 
-/**
- * Add a new round to an event
- * Useful for adding bonus rounds during active events
- */
 export async function addRound(
   input: AddRoundInput
 ): Promise<ActionResponse<{ roundNumber: number }>> {
   try {
     await requireAdmin();
 
-    // Verify event exists
     const event = await db.query.events.findFirst({
       where: eq(events.id, input.eventId),
     });
@@ -27,7 +22,6 @@ export async function addRound(
       return { success: false, error: "Event not found" };
     }
 
-    // Get current max round number
     const maxRoundResult = await db.query.rounds.findFirst({
       where: eq(rounds.eventId, input.eventId),
       orderBy: desc(rounds.roundNumber),
@@ -35,7 +29,6 @@ export async function addRound(
 
     const newRoundNumber = (maxRoundResult?.roundNumber || 0) + 1;
 
-    // Insert new round
     await db.insert(rounds).values({
       eventId: input.eventId,
       roundNumber: newRoundNumber,
@@ -126,7 +119,6 @@ export async function deleteRound(
       return { success: false, error: "Round not found" };
     }
 
-    // Check if any scores exist for this round
     const scoresForRound = round.event.scores.filter(
       (score) => score.roundNumber === round.roundNumber
     );

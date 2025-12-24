@@ -7,25 +7,21 @@ import { requireAdmin } from "@/lib/auth/server";
 import { publicPaths, adminPaths } from "@/lib/paths";
 import { eq, and } from "drizzle-orm";
 import type { ActionResponse, AddTeamInput } from "@/lib/types";
+import { publishEvent } from "@/lib/ably/server";
+import { ABLY_EVENTS } from "@/lib/ably/config";
 
-/**
- * Add a team to an event
- * Handles mid-event joins by creating 0 scores for missed rounds
- */
 export async function addTeam(
   input: AddTeamInput
 ): Promise<ActionResponse<{ teamId: string }>> {
   try {
     const user = await requireAdmin();
 
-    // Validate input
     if (!input.name || input.name.trim().length === 0) {
       return { success: false, error: "Team name is required" };
     }
 
     const teamName = input.name.trim();
 
-    // Check if team name already exists in this event
     const existingTeam = await db.query.teams.findFirst({
       where: and(
         eq(teams.eventId, input.eventId),
@@ -40,7 +36,6 @@ export async function addTeam(
       };
     }
 
-    // Get event to verify it exists
     const event = await db.query.events.findFirst({
       where: eq(events.id, input.eventId),
     });
@@ -51,9 +46,7 @@ export async function addTeam(
 
     const joinedRound = input.joinedRound || 1;
 
-    // Create team and backfill scores in a transaction
     const teamId = await db.transaction(async (tx) => {
-      // Insert team
       const [newTeam] = await tx
         .insert(teams)
         .values({
@@ -64,7 +57,6 @@ export async function addTeam(
         })
         .returning({ id: teams.id });
 
-      // If mid-event join, create 0 scores for previous rounds
       if (joinedRound > 1) {
         for (let roundNum = 1; roundNum < joinedRound; roundNum++) {
           const [newScore] = await tx
@@ -78,7 +70,6 @@ export async function addTeam(
             })
             .returning({ id: scores.id });
 
-          // Create audit log entry
           await tx.insert(scoreAuditLog).values({
             scoreId: newScore.id,
             eventId: input.eventId,
@@ -96,6 +87,17 @@ export async function addTeam(
       return newTeam.id;
     });
 
+    try {
+      await publishEvent(input.eventId, ABLY_EVENTS.TEAM_ADDED, {
+        teamId,
+        teamName: teamName,
+        joinedRound,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish team addition:', error);
+    }
+
     revalidatePath(adminPaths.events.byId(input.eventId));
     revalidatePath(publicPaths.home);
     return { success: true, data: { teamId } };
@@ -108,10 +110,6 @@ export async function addTeam(
   }
 }
 
-/**
- * Remove a team from an event
- * Cascade deletes all scores and audit logs
- */
 export async function removeTeam(
   teamId: string,
   eventId: string
@@ -127,8 +125,19 @@ export async function removeTeam(
       return { success: false, error: "Team not found" };
     }
 
-    // Delete team (cascade deletes scores and audit logs)
+    const teamName = team.name;
+
     await db.delete(teams).where(eq(teams.id, teamId));
+
+    try {
+      await publishEvent(eventId, ABLY_EVENTS.TEAM_REMOVED, {
+        teamId,
+        teamName,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('[Ably] Failed to publish team removal:', error);
+    }
 
     revalidatePath(adminPaths.events.byId(eventId));
     revalidatePath(publicPaths.home);
@@ -142,9 +151,6 @@ export async function removeTeam(
   }
 }
 
-/**
- * Update team name
- */
 export async function updateTeamName(
   teamId: string,
   eventId: string,
@@ -159,7 +165,6 @@ export async function updateTeamName(
       return { success: false, error: "Team name is required" };
     }
 
-    // Check if new name conflicts with existing team
     const existingTeam = await db.query.teams.findFirst({
       where: and(
         eq(teams.eventId, eventId),

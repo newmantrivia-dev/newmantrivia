@@ -10,17 +10,12 @@ import type {
   Score,
 } from "@/lib/types";
 
-/**
- * Get active or upcoming event for public display
- * Priority: active > recently completed (48h) > upcoming > none
- */
 export async function getPublicEventData(): Promise<
   | { type: "active"; data: LeaderboardData }
   | { type: "completed"; data: LeaderboardData }
   | { type: "upcoming"; event: LeaderboardData["event"] }
   | { type: "none" }
 > {
-  // Check for active event first
   const activeEvent = await db.query.events.findFirst({
     where: eq(events.status, "active"),
     with: {
@@ -39,7 +34,6 @@ export async function getPublicEventData(): Promise<
     return { type: "active", data: leaderboardData };
   }
 
-  // Check for recently completed event (within 48 hours)
   const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
   const completedEvent = await db.query.events.findFirst({
     where: and(
@@ -108,7 +102,6 @@ function calculateLeaderboard(
       ? completedRoundNumbers[completedRoundNumbers.length - 1]
       : null;
 
-  // Calculate totals for each team
   const teamRankings: TeamRanking[] = event.teams.map((team: Team) => {
     const teamScores = event.scores.filter((score: Score) => score.teamId === team.id);
 
