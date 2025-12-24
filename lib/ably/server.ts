@@ -2,19 +2,14 @@ import Ably from 'ably';
 import type { Rest } from 'ably';
 import type { AblyEventPayloads } from './config';
 import { getEventChannel } from './config';
+import { env } from '@/lib/env';
 
 let ablyServer: Rest | null = null;
 
 export function getAblyServer(): Rest | null {
   if (!ablyServer) {
-    const apiKey = process.env.ABLY_API_KEY;
-    if (!apiKey) {
-      console.warn('[Ably] Server API key not found - real-time features disabled');
-      return null;
-    }
-    
     try {
-      ablyServer = new Ably.Rest({ key: apiKey });
+      ablyServer = new Ably.Rest({ key: env.ABLY_API_KEY });
     } catch (error) {
       console.error('[Ably] Failed to initialize server client:', error);
       return null;
