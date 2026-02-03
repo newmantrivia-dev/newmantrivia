@@ -222,7 +222,7 @@ function ViewToggle({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] transition",
+        "cursor-pointer flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] transition",
         disabled
           ? "cursor-not-allowed border-white/10 text-white/30"
           : "hover:border-white/40",
