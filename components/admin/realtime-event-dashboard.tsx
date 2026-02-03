@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAblyEvent } from '@/lib/ably/hooks';
 import { ABLY_EVENTS } from '@/lib/ably/config';
@@ -8,18 +8,28 @@ import { toast } from 'sonner';
 import { ConnectionStatus } from '@/components/ably/connection-status';
 import { useSession } from '@/lib/auth/client';
 import { RealtimeProvider } from './realtime-context';
-import type { Event } from '@/lib/types';
+import type { Event, Team } from '@/lib/types';
 
-type EventWithDetails = Event & {
-  teams: Array<{ id: string; name: string }>;
+export type EventWithDetails = Event & {
+  teams: Team[];
   rounds: Array<{ id: string; roundNumber: number; roundName: string | null; isBonus: boolean }>;
   scores: Array<{ id: string; teamId: string; roundNumber: number; points: string }>;
 };
 
+const EventDashboardContext = createContext<EventWithDetails | null>(null);
+
+export function useEventDashboardData() {
+  const context = useContext(EventDashboardContext);
+  if (!context) {
+    throw new Error('useEventDashboardData must be used within RealtimeEventDashboard');
+  }
+  return context;
+}
+
 interface RealtimeEventDashboardProps {
   eventId: string;
   event: EventWithDetails;
-  children: (event: EventWithDetails) => React.ReactNode;
+  children: React.ReactNode;
 }
 
 export function RealtimeEventDashboard({
@@ -112,10 +122,12 @@ export function RealtimeEventDashboard({
 
   return (
     <RealtimeProvider eventId={eventId}>
-      <div className="flex items-center justify-end gap-4 mb-4">
-        <ConnectionStatus variant="admin" />
-      </div>
-      {children(event)}
+      <EventDashboardContext.Provider value={event}>
+        <div className="flex items-center justify-end gap-4 mb-4">
+          <ConnectionStatus variant="admin" />
+        </div>
+        {children}
+      </EventDashboardContext.Provider>
     </RealtimeProvider>
   );
 }
