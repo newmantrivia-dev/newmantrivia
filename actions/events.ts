@@ -501,6 +501,65 @@ export async function moveToNextRound(
   }
 }
 
+export async function moveToPreviousRound(
+  eventId: string
+): Promise<ActionResponse<{ previousRound: number }>> {
+  try {
+    const user = await requireAdmin();
+
+    const event = await db.query.events.findFirst({
+      where: eq(events.id, eventId),
+      with: {
+        rounds: true,
+      },
+    });
+
+    if (!event) {
+      return { success: false, error: "Event not found" };
+    }
+
+    if (event.status !== "active") {
+      return { success: false, error: "Only active events can move to previous round" };
+    }
+
+    const currentRound = event.currentRound || 1;
+    if (currentRound <= 1) {
+      return { success: false, error: "Already at round 1" };
+    }
+
+    const previousRound = currentRound - 1;
+
+    await db
+      .update(events)
+      .set({
+        currentRound: previousRound,
+      })
+      .where(eq(events.id, eventId));
+
+    try {
+      await publishEvent(eventId, ABLY_EVENTS.ROUND_CHANGED, {
+        newRound: previousRound,
+        totalRounds: event.rounds.length,
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[Ably] Failed to publish round change:", error);
+    }
+
+    revalidatePath(adminPaths.events.byId(eventId));
+    revalidatePath(publicPaths.home);
+    return { success: true, data: { previousRound } };
+  } catch (error) {
+    console.error("Error moving to previous round:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to move to previous round",
+    };
+  }
+}
+
 export async function resetEvent(
   eventId: string
 ): Promise<ActionResponse> {

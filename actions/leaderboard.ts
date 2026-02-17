@@ -159,6 +159,12 @@ function calculateLeaderboard(
     );
   };
 
+  const activeCurrentRound = event.status === "active" ? (event.currentRound ?? 1) : null;
+  const currentRoundHasScores =
+    activeCurrentRound !== null
+      ? event.scores.some((score) => score.roundNumber === activeCurrentRound)
+      : false;
+
   const teamRankings: TeamRanking[] = event.teams.map((team: Team) => {
     const teamScores = event.scores.filter((score: Score) => score.teamId === team.id);
 
@@ -170,7 +176,12 @@ function calculateLeaderboard(
       };
     });
 
-    const totalScore = roundScores.reduce((sum: number, rs) => sum + rs.points, 0);
+    const totalScore = roundScores.reduce((sum: number, rs) => {
+      if (activeCurrentRound !== null && rs.roundNumber > activeCurrentRound) {
+        return sum;
+      }
+      return sum + rs.points;
+    }, 0);
 
     const lastRoundPoints = lastCompletedRound
       ? roundScores.find((rs) => rs.roundNumber === lastCompletedRound)?.points ?? 0
@@ -221,7 +232,13 @@ function calculateLeaderboard(
 
   const previousComparisonRound =
     event.status === "active"
-      ? lastCompletedRound
+      ? !lastCompletedRound
+        ? null
+        : currentRoundHasScores
+          ? lastCompletedRound
+          : lastCompletedRound > 1
+            ? lastCompletedRound - 1
+            : null
       : lastCompletedRound && lastCompletedRound > 1
         ? lastCompletedRound - 1
         : null;

@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ScoreEntry } from "./score-entry";
-import { moveToNextRound } from "@/actions/events";
+import { moveToNextRound, moveToPreviousRound } from "@/actions/events";
 import { toast } from "sonner";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { useAblyEvent } from "@/lib/ably/hooks";
 import { ABLY_EVENTS } from "@/lib/ably/config";
 import { useSession } from "@/lib/auth/client";
@@ -94,6 +94,39 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
     }
   };
 
+  const handleMoveToPrevious = async () => {
+    const currentRoundNum = parseInt(activeTab);
+    if (currentRoundNum <= 1) {
+      toast.info("Already at round 1");
+      return;
+    }
+
+    const previousRound = currentRoundNum - 1;
+
+    setIsMoving(true);
+    setOptimisticCurrentRound(previousRound);
+    setActiveTab(previousRound.toString());
+
+    try {
+      const result = await moveToPreviousRound(event.id);
+
+      if (result.success) {
+        toast.success(`Moved back to round ${result.data?.previousRound}!`);
+        router.refresh();
+      } else {
+        toast.error(result.error);
+        setOptimisticCurrentRound(null);
+        setActiveTab(currentRoundNum.toString());
+      }
+    } catch {
+      toast.error("Failed to move to previous round");
+      setOptimisticCurrentRound(null);
+      setActiveTab(currentRoundNum.toString());
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
   const isRoundComplete = (roundNumber: number) => {
     return event.teams.every((team) =>
       event.scores.some(
@@ -150,19 +183,34 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
                 </p>
               </div>
 
-              {round.roundNumber === effectiveCurrentRound &&
-                round.roundNumber < event.rounds.length && (
-                  <Button onClick={handleMoveToNext} disabled={isMoving}>
-                    {isMoving ? (
-                      "Moving..."
-                    ) : (
-                      <>
-                        Move to Round {effectiveCurrentRound + 1}
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </>
-                    )}
-                  </Button>
-                )}
+              {round.roundNumber === effectiveCurrentRound && (
+                <div className="flex items-center gap-2">
+                  {round.roundNumber > 1 && (
+                    <Button variant="outline" onClick={handleMoveToPrevious} disabled={isMoving}>
+                      {isMoving ? (
+                        "Moving..."
+                      ) : (
+                        <>
+                          <ChevronLeft className="w-4 h-4 mr-1" />
+                          Back to Round {effectiveCurrentRound - 1}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {round.roundNumber < event.rounds.length && (
+                    <Button onClick={handleMoveToNext} disabled={isMoving}>
+                      {isMoving ? (
+                        "Moving..."
+                      ) : (
+                        <>
+                          Move to Round {effectiveCurrentRound + 1}
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             <ScoreEntry event={event} roundNumber={round.roundNumber} />
