@@ -93,15 +93,45 @@ function calculateLeaderboard(
     scoresByRound.set(score.roundNumber, roundScores);
   }
 
-  const completedRoundNumbers = Array.from(scoresByRound.entries())
-    .filter(([, scores]) => scores.length > 0)
-    .map(([roundNumber]) => roundNumber)
+  const sortedRoundNumbers = event.rounds
+    .map((round) => round.roundNumber)
     .sort((a, b) => a - b);
 
-  const lastCompletedRound =
+  const scoreKey = (teamId: string, roundNumber: number) => `${teamId}:${roundNumber}`;
+  const recordedScores = new Set(
+    event.scores.map((score) => scoreKey(score.teamId, score.roundNumber))
+  );
+
+  const isRoundCompleted = (roundNumber: number) => {
+    const eligibleTeams = event.teams.filter((team) => team.joinedRound <= roundNumber);
+    if (eligibleTeams.length === 0) return false;
+    return eligibleTeams.every((team) => recordedScores.has(scoreKey(team.id, roundNumber)));
+  };
+
+  const completedRoundNumbers = sortedRoundNumbers.filter((roundNumber) =>
+    isRoundCompleted(roundNumber)
+  );
+
+  const fallbackCompletedRound =
     completedRoundNumbers.length > 0
       ? completedRoundNumbers[completedRoundNumbers.length - 1]
       : null;
+
+  let lastCompletedRound: number | null = fallbackCompletedRound;
+  if (event.status === "active") {
+    const currentRound = event.currentRound ?? 1;
+    const candidateRound = currentRound - 1;
+
+    if (candidateRound < 1) {
+      lastCompletedRound = null;
+    } else if (isRoundCompleted(candidateRound)) {
+      lastCompletedRound = candidateRound;
+    } else {
+      lastCompletedRound =
+        completedRoundNumbers.filter((roundNumber) => roundNumber < candidateRound).at(-1) ??
+        null;
+    }
+  }
 
   const getCumulativeTotalsByRound = (upToRound: number) => {
     const totals = new Map<string, number>(

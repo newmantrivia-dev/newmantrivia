@@ -7,17 +7,23 @@ import { getRankBadge } from "@/lib/leaderboard-utils";
 import type { LeaderboardData, TeamRanking, TeamMovement } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
   ChevronDown,
-  Flame,
-  List,
-  Rows3,
+  SlidersHorizontal,
   Sparkles,
-  Table2,
-  Trophy,
 } from "lucide-react";
 
 interface LeaderboardProps {
@@ -107,12 +113,12 @@ export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
       {layoutMode === "cards" && (
         <div className="space-y-3">
           {visibleTeams.map((ranking) => (
-          <MobileTeamCard
-            key={ranking.team.id}
-            ranking={ranking}
-            totalRounds={data.totalRounds}
-            highlightRound={data.lastCompletedRound}
-          />
+            <MobileTeamCard
+              key={ranking.team.id}
+              ranking={ranking}
+              totalRounds={data.totalRounds}
+              highlightRound={data.lastCompletedRound}
+            />
           ))}
         </div>
       )}
@@ -151,6 +157,8 @@ function LeaderboardTopBar({
   totalTeams: number;
   hiddenTeamsCount: number;
 }) {
+  const teamsLabel = maxTeams === "all" ? "All teams" : `Top ${maxTeams}`;
+
   return (
     <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-white/10 p-6 shadow-xl backdrop-blur lg:flex-row lg:items-center lg:justify-between">
       <div className="space-y-2">
@@ -163,77 +171,47 @@ function LeaderboardTopBar({
             Last completed round: {lastCompletedRound}
           </p>
         )}
+        <p className="text-xs uppercase tracking-[0.32em] text-white/55">
+          Display: {layoutMode} • {density} • {teamsLabel}
+        </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <ViewToggle
-          icon={Trophy}
-          label="Overall"
-          active={activeViewMode === "total"}
-          onClick={() => setViewMode("total")}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/35 p-1">
+          <ViewToggle
+            label="Overall"
+            active={activeViewMode === "total"}
+            onClick={() => setViewMode("total")}
+          />
+          <ViewToggle
+            label="Last round"
+            active={activeViewMode === "last-round"}
+            onClick={() => setViewMode("last-round")}
+            disabled={disableRoundMode}
+          />
+        </div>
+        <DisplayMenu
+          layoutMode={layoutMode}
+          setLayoutMode={setLayoutMode}
+          density={density}
+          setDensity={setDensity}
+          maxTeams={maxTeams}
+          setMaxTeams={setMaxTeams}
+          totalTeams={totalTeams}
         />
-        <ViewToggle
-          icon={Flame}
-          label="Last round"
-          active={activeViewMode === "last-round"}
-          onClick={() => setViewMode("last-round")}
-          disabled={disableRoundMode}
-        />
-        <ViewToggle
-          icon={Table2}
-          label="Table"
-          active={layoutMode === "table"}
-          onClick={() => setLayoutMode("table")}
-        />
-        <ViewToggle
-          icon={List}
-          label="Cards"
-          active={layoutMode === "cards"}
-          onClick={() => setLayoutMode("cards")}
-        />
-        <ViewToggle
-          icon={Rows3}
-          label="Compact"
-          active={density === "compact"}
-          onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
-        />
-        <ViewToggle
-          icon={Activity}
-          label="All"
-          active={maxTeams === "all"}
-          onClick={() => setMaxTeams("all")}
-        />
-        <ViewToggle
-          icon={Activity}
-          label="Top 20"
-          active={maxTeams === 20}
-          onClick={() => setMaxTeams(20)}
-          disabled={totalTeams < 20}
-        />
-        <ViewToggle
-          icon={Activity}
-          label="Top 10"
-          active={maxTeams === 10}
-          onClick={() => setMaxTeams(10)}
-          disabled={totalTeams < 10}
-        />
-        {hiddenTeamsCount > 0 && (
-          <span className="text-xs uppercase tracking-[0.28em] text-white/60">
-            +{hiddenTeamsCount} hidden
-          </span>
-        )}
+        <span className="text-xs uppercase tracking-[0.28em] text-white/60">
+          {hiddenTeamsCount > 0 ? `+${hiddenTeamsCount} hidden` : `${totalTeams} teams`}
+        </span>
       </div>
     </div>
   );
 }
 
 function ViewToggle({
-  icon: Icon,
   label,
   active,
   onClick,
   disabled,
 }: {
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   active: boolean;
   onClick: () => void;
@@ -245,7 +223,7 @@ function ViewToggle({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "cursor-pointer flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] transition",
+        "cursor-pointer flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.32em] transition",
         disabled
           ? "cursor-not-allowed border-white/10 text-white/30"
           : "hover:border-white/40",
@@ -254,9 +232,98 @@ function ViewToggle({
           : "border-white/10 bg-slate-950/40 text-white/70"
       )}
     >
-      <Icon className="h-4 w-4" />
       {label}
     </button>
+  );
+}
+
+function DisplayMenu({
+  layoutMode,
+  setLayoutMode,
+  density,
+  setDensity,
+  maxTeams,
+  setMaxTeams,
+  totalTeams,
+}: {
+  layoutMode: "table" | "cards";
+  setLayoutMode: (mode: "table" | "cards") => void;
+  density: "comfortable" | "compact";
+  setDensity: (density: "comfortable" | "compact") => void;
+  maxTeams: "all" | 20 | 10;
+  setMaxTeams: (max: "all" | 20 | 10) => void;
+  totalTeams: number;
+}) {
+  const maxTeamsValue = maxTeams === "all" ? "all" : String(maxTeams);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 rounded-full border-white/20 bg-slate-950/45 px-4 text-xs font-semibold uppercase tracking-[0.32em] text-white hover:bg-white/10"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Display
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-56 border-white/15 bg-slate-950/95 text-white"
+      >
+        <DropdownMenuLabel className="text-xs uppercase tracking-[0.3em] text-white/60">
+          Layout
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={layoutMode}
+          onValueChange={(value) => setLayoutMode(value as "table" | "cards")}
+        >
+          <DropdownMenuRadioItem value="table">Table</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="cards">Cards</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator className="bg-white/10" />
+        <DropdownMenuLabel className="text-xs uppercase tracking-[0.3em] text-white/60">
+          Density
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={density}
+          onValueChange={(value) => setDensity(value as "comfortable" | "compact")}
+        >
+          <DropdownMenuRadioItem value="comfortable">Comfortable</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="compact">Compact</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator className="bg-white/10" />
+        <DropdownMenuLabel className="text-xs uppercase tracking-[0.3em] text-white/60">
+          Team limit
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={maxTeamsValue}
+          onValueChange={(value) => {
+            if (value === "all") {
+              setMaxTeams("all");
+              return;
+            }
+            if (value === "20") {
+              setMaxTeams(20);
+              return;
+            }
+            if (value === "10") {
+              setMaxTeams(10);
+            }
+          }}
+        >
+          <DropdownMenuRadioItem value="all">All teams</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="20" disabled={totalTeams < 20}>
+            Top 20
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="10" disabled={totalTeams < 10}>
+            Top 10
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
