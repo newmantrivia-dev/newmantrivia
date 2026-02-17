@@ -12,13 +12,16 @@ interface TeamRowProps {
   totalRounds: number;
   highlightRound: number | null;
   viewMode: "total" | "last-round";
+  density: "comfortable" | "compact";
 }
 
-export function TeamRow({ ranking, totalRounds, highlightRound, viewMode }: TeamRowProps) {
+export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, density }: TeamRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const rankBadge = getRankBadge(ranking.rank);
   const isPodium = ranking.rank <= 3;
   const highlightActive = Boolean(highlightRound);
+  const hasPreviousRound = Boolean(highlightRound && highlightRound > 1);
+  const isCompact = density === "compact";
 
   const podiumStyles = [
     "from-amber-400/30 via-transparent to-transparent",
@@ -56,21 +59,24 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode }: Team
         )}
         onClick={() => setIsExpanded((prev) => !prev)}
       >
-        <td className="px-4 py-4 align-middle">
+        <td className={cn("px-4 align-middle", isCompact ? "py-2.5" : "py-4")}>
           <div className="flex items-center">
             {rankBadge ? (
               <span className="text-2xl drop-shadow-lg">{rankBadge}</span>
             ) : (
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-lg font-semibold">
+              <span className={cn(
+                "flex items-center justify-center rounded-full border border-white/20 bg-white/10 font-semibold",
+                isCompact ? "h-8 w-8 text-base" : "h-10 w-10 text-lg"
+              )}>
                 {ranking.rank}
               </span>
             )}
           </div>
         </td>
-        <td className="px-4 py-4 align-middle">
+        <td className={cn("px-4 align-middle", isCompact ? "py-2.5" : "py-4")}>
           <div className="flex items-center gap-4">
             <div className="min-w-0">
-              <p className="truncate text-lg font-semibold tracking-tight">
+              <p className={cn("truncate font-semibold tracking-tight", isCompact ? "text-base" : "text-lg")}>
                 {ranking.team.name}
               </p>
               <p className="text-xs uppercase tracking-[0.35em] text-white/60">
@@ -83,7 +89,8 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode }: Team
         {highlightActive && (
           <td
             className={cn(
-              "px-4 py-4 text-right text-base font-semibold align-middle",
+              "px-4 text-right font-semibold align-middle",
+              isCompact ? "py-2.5 text-sm" : "py-4 text-base",
               viewMode === "last-round" && "text-emerald-200"
             )}
           >
@@ -98,13 +105,13 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode }: Team
               {formatPoints(ranking.lastRoundPoints)}
             </motion.span>
             <span className="ml-2 text-xs font-normal text-white/60">
-              {formatDelta(ranking.recentDelta)}
+              {formatDelta(ranking.recentDelta, hasPreviousRound)}
             </span>
           </td>
         )}
-        <td className="px-4 py-4 text-right align-middle">
+        <td className={cn("px-4 text-right align-middle", isCompact ? "py-2.5" : "py-4")}>
           <motion.span
-            className="text-xl font-bold"
+            className={cn("font-bold", isCompact ? "text-lg" : "text-xl")}
             animate={
               ranking.movement === "up" || ranking.movement === "down"
                 ? { scale: [1, 1.12, 1] }
@@ -115,7 +122,7 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode }: Team
             {formatPoints(ranking.totalScore)}
           </motion.span>
         </td>
-        <td className="px-4 py-4 text-right align-middle">
+        <td className={cn("px-4 text-right align-middle", isCompact ? "py-2.5" : "py-4")}>
           <ChevronDown
             className={cn(
               "ml-auto h-5 w-5 text-white/60 transition-transform group-hover:text-white",
@@ -168,7 +175,7 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode }: Team
                     label="Last round"
                     value={highlightRound ? `R${highlightRound}` : "—"}
                   />
-                  <DetailStat label="Momentum" value={momentumCopy(ranking)} />
+                  <DetailStat label="Momentum" value={momentumCopy(ranking, hasPreviousRound)} />
                 </div>
               </div>
             </td>
@@ -214,20 +221,25 @@ function DetailStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function momentumCopy(ranking: TeamRanking) {
+function momentumCopy(ranking: TeamRanking, hasPreviousRound: boolean) {
+  if (!hasPreviousRound) {
+    return "No prior round yet";
+  }
+
   if (ranking.recentDelta > 0) {
-    return `+${formatPoints(ranking.recentDelta)} last round`;
+    return `Δ +${formatPoints(ranking.recentDelta)} vs previous round`;
   }
   if (ranking.recentDelta < 0) {
-    return `${formatPoints(ranking.recentDelta)} last round`;
+    return `Δ ${formatPoints(ranking.recentDelta)} vs previous round`;
   }
-  return "Holding steady";
+  return "Δ 0 vs previous round";
 }
 
-function formatDelta(delta: number) {
-  if (delta > 0) return `+${formatPoints(delta)}`;
-  if (delta < 0) return `${formatPoints(delta)}`;
-  return "±0";
+function formatDelta(delta: number, hasPreviousRound: boolean) {
+  if (!hasPreviousRound) return "Δ —";
+  if (delta > 0) return `Δ +${formatPoints(delta)}`;
+  if (delta < 0) return `Δ ${formatPoints(delta)}`;
+  return "Δ 0";
 }
 
 function formatPoints(value: number) {

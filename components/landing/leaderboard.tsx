@@ -13,7 +13,10 @@ import {
   Activity,
   ChevronDown,
   Flame,
+  List,
+  Rows3,
   Sparkles,
+  Table2,
   Trophy,
 } from "lucide-react";
 
@@ -24,6 +27,9 @@ interface LeaderboardProps {
 
 export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
   const [viewMode, setViewMode] = useState<"total" | "last-round">("total");
+  const [layoutMode, setLayoutMode] = useState<"table" | "cards">("table");
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
+  const [maxTeams, setMaxTeams] = useState<"all" | 20 | 10>("all");
   const teamMovements = data.rankings;
 
   const canShowLastRound = Boolean(data.lastCompletedRound);
@@ -47,6 +53,11 @@ export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
   });
 
   const hasTeams = data.rankings.length > 0;
+  const visibleTeams = useMemo(() => {
+    if (maxTeams === "all") return displayTeams;
+    return displayTeams.slice(0, maxTeams);
+  }, [displayTeams, maxTeams]);
+  const hiddenTeamsCount = Math.max(0, displayTeams.length - visibleTeams.length);
 
   return (
     <div className="space-y-6">
@@ -57,22 +68,31 @@ export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
         activeViewMode={effectiveViewMode}
         setViewMode={setViewMode}
         disableRoundMode={!canShowLastRound}
+        layoutMode={layoutMode}
+        setLayoutMode={setLayoutMode}
+        density={density}
+        setDensity={setDensity}
+        maxTeams={maxTeams}
+        setMaxTeams={setMaxTeams}
+        totalTeams={data.rankings.length}
+        hiddenTeamsCount={hiddenTeamsCount}
       />
 
-      <div className="hidden md:block">
+      {layoutMode === "table" && (
         <Card className="overflow-hidden border-white/15 bg-slate-950/40 shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px]">
               <TableHeader hasLastRound={canShowLastRound} />
               <tbody className="divide-y divide-white/5">
                 <AnimatePresence mode="popLayout">
-                  {displayTeams.map((ranking) => (
+                  {visibleTeams.map((ranking) => (
                     <TeamRow
                       key={ranking.team.id}
                       ranking={ranking}
                       totalRounds={data.totalRounds}
                       highlightRound={data.lastCompletedRound}
                       viewMode={effectiveViewMode}
+                      density={density}
                     />
                   ))}
                 </AnimatePresence>
@@ -80,20 +100,22 @@ export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
             </table>
           </div>
         </Card>
-      </div>
+      )}
 
       {!hasTeams && <EmptyLeaderboardMessage isCompleted={isCompleted} />}
 
-      <div className="space-y-3 md:hidden">
-        {displayTeams.map((ranking) => (
+      {layoutMode === "cards" && (
+        <div className="space-y-3">
+          {visibleTeams.map((ranking) => (
           <MobileTeamCard
             key={ranking.team.id}
             ranking={ranking}
             totalRounds={data.totalRounds}
             highlightRound={data.lastCompletedRound}
           />
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -105,6 +127,14 @@ function LeaderboardTopBar({
   activeViewMode,
   setViewMode,
   disableRoundMode,
+  layoutMode,
+  setLayoutMode,
+  density,
+  setDensity,
+  maxTeams,
+  setMaxTeams,
+  totalTeams,
+  hiddenTeamsCount,
 }: {
   isCompleted: boolean;
   lastUpdatedLabel: string;
@@ -112,6 +142,14 @@ function LeaderboardTopBar({
   activeViewMode: "total" | "last-round";
   setViewMode: (mode: "total" | "last-round") => void;
   disableRoundMode: boolean;
+  layoutMode: "table" | "cards";
+  setLayoutMode: (mode: "table" | "cards") => void;
+  density: "comfortable" | "compact";
+  setDensity: (density: "comfortable" | "compact") => void;
+  maxTeams: "all" | 20 | 10;
+  setMaxTeams: (max: "all" | 20 | 10) => void;
+  totalTeams: number;
+  hiddenTeamsCount: number;
 }) {
   return (
     <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-white/10 p-6 shadow-xl backdrop-blur lg:flex-row lg:items-center lg:justify-between">
@@ -126,7 +164,7 @@ function LeaderboardTopBar({
           </p>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <ViewToggle
           icon={Trophy}
           label="Overall"
@@ -140,6 +178,49 @@ function LeaderboardTopBar({
           onClick={() => setViewMode("last-round")}
           disabled={disableRoundMode}
         />
+        <ViewToggle
+          icon={Table2}
+          label="Table"
+          active={layoutMode === "table"}
+          onClick={() => setLayoutMode("table")}
+        />
+        <ViewToggle
+          icon={List}
+          label="Cards"
+          active={layoutMode === "cards"}
+          onClick={() => setLayoutMode("cards")}
+        />
+        <ViewToggle
+          icon={Rows3}
+          label="Compact"
+          active={density === "compact"}
+          onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
+        />
+        <ViewToggle
+          icon={Activity}
+          label="All"
+          active={maxTeams === "all"}
+          onClick={() => setMaxTeams("all")}
+        />
+        <ViewToggle
+          icon={Activity}
+          label="Top 20"
+          active={maxTeams === 20}
+          onClick={() => setMaxTeams(20)}
+          disabled={totalTeams < 20}
+        />
+        <ViewToggle
+          icon={Activity}
+          label="Top 10"
+          active={maxTeams === 10}
+          onClick={() => setMaxTeams(10)}
+          disabled={totalTeams < 10}
+        />
+        {hiddenTeamsCount > 0 && (
+          <span className="text-xs uppercase tracking-[0.28em] text-white/60">
+            +{hiddenTeamsCount} hidden
+          </span>
+        )}
       </div>
     </div>
   );
@@ -186,7 +267,7 @@ function TableHeader({ hasLastRound }: { hasLastRound: boolean }) {
         <th className="px-4 py-4 text-left">Rank</th>
         <th className="px-4 py-4 text-left">Team</th>
         {hasLastRound && (
-          <th className="px-4 py-4 text-right">Last Round</th>
+          <th className="px-4 py-4 text-right">Last Round / Δ</th>
         )}
         <th className="px-4 py-4 text-right">Total</th>
         <th className="w-12 px-4 py-4 text-right">Details</th>
@@ -302,6 +383,9 @@ function MobileTeamCard({
           {highlightRound && (
             <div className="mt-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white">
               Round {highlightRound}: {formatPoints(ranking.lastRoundPoints)} pts
+              <span className="ml-2 text-xs text-white/70">
+                {formatDelta(ranking.recentDelta, highlightRound > 1)}
+              </span>
             </div>
           )}
           <AnimatePresence initial={false}>
@@ -353,4 +437,11 @@ function MovementBadge({ movement }: { movement: TeamMovement }) {
 
 function formatPoints(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+function formatDelta(delta: number, hasPreviousRound: boolean) {
+  if (!hasPreviousRound) return "Δ —";
+  if (delta > 0) return `Δ +${formatPoints(delta)}`;
+  if (delta < 0) return `Δ ${formatPoints(delta)}`;
+  return "Δ 0";
 }
