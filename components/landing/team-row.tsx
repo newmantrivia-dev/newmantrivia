@@ -23,6 +23,8 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
   const hasPreviousRound = Boolean(highlightRound && highlightRound > 1);
   const isCompact = density === "compact";
   const isSkinny = density === "skinny";
+  const movementYOffset = ranking.movement === "up" ? -6 : ranking.movement === "down" ? 6 : 0;
+  const movementXOffset = ranking.movement === "up" ? -8 : ranking.movement === "down" ? 8 : 0;
 
   const podiumStyles = [
     "from-amber-400/30 via-transparent to-transparent",
@@ -41,7 +43,11 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
         onClick={() => setIsExpanded((prev) => !prev)}
       >
         <td className={cn("px-4 align-middle", isSkinny ? "py-1.5" : isCompact ? "py-2.5" : "py-4")}>
-          <div className="flex items-center">
+          <motion.div
+            className="flex items-center"
+            animate={movementYOffset !== 0 ? { y: [0, movementYOffset, 0] } : {}}
+            transition={{ duration: 0.35 }}
+          >
             {rankBadge ? (
               <span className={cn("drop-shadow-lg", isSkinny ? "text-xl" : "text-2xl")}>{rankBadge}</span>
             ) : (
@@ -52,10 +58,14 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
                 {ranking.rank}
               </span>
             )}
-          </div>
+          </motion.div>
         </td>
         <td className={cn("px-4 align-middle", isSkinny ? "py-1.5" : isCompact ? "py-2.5" : "py-4")}>
-          <div className={cn("flex items-center", isSkinny ? "gap-2" : "gap-4")}>
+          <motion.div
+            className={cn("flex items-center", isSkinny ? "gap-2" : "gap-4")}
+            animate={movementXOffset !== 0 ? { x: [0, movementXOffset, 0] } : {}}
+            transition={{ duration: 0.35 }}
+          >
             <div className="min-w-0">
               <p className={cn(
                 "truncate font-semibold tracking-tight",
@@ -70,7 +80,7 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
               )}
             </div>
             {!isSkinny && <MovementChip movement={ranking.movement} />}
-          </div>
+          </motion.div>
         </td>
         {highlightActive && (
           <td
@@ -120,53 +130,54 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
       </tr>
       <AnimatePresence initial={false}>
         {isExpanded && (
-          <motion.tr
-            key="details"
-            layout
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-          >
+          <tr key="details">
             <td
               colSpan={highlightActive ? 5 : 4}
               className="px-8 pb-6 pt-2 text-white/90"
             >
-              <div className="grid gap-4 md:grid-cols-[1fr,0.8fr] md:items-center">
-                <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.35em] text-white/50">
-                    Round progression
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {ranking.roundScores.map((rs) => (
-                      <div
-                        key={rs.roundNumber}
-                        className={cn(
-                          "rounded-2xl border px-3 py-2",
-                          highlightRound === rs.roundNumber
-                            ? "border-primary/70 bg-primary/10 text-white"
-                            : "border-white/10 bg-white/5 text-white"
-                        )}
-                      >
-                        <p className="text-xs uppercase tracking-[0.35em] text-white/60">
-                          R{rs.roundNumber}
-                        </p>
-                        <p className="font-semibold">{formatPoints(rs.points)}</p>
-                      </div>
-                    ))}
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="grid gap-4 md:grid-cols-[1fr,0.8fr] md:items-center">
+                  <div className="space-y-3">
+                    <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+                      Round progression
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {ranking.roundScores.map((rs) => (
+                        <div
+                          key={rs.roundNumber}
+                          className={cn(
+                            "rounded-2xl border px-3 py-2",
+                            highlightRound === rs.roundNumber
+                              ? "border-primary/70 bg-primary/10 text-white"
+                              : "border-white/10 bg-white/5 text-white"
+                          )}
+                        >
+                          <p className="text-xs uppercase tracking-[0.35em] text-white/60">
+                            R{rs.roundNumber}
+                          </p>
+                          <p className="font-semibold">{formatPoints(rs.points)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-2 rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <DetailStat label="Total rounds" value={`${totalRounds}`} />
+                    <DetailStat
+                      label="Last round"
+                      value={highlightRound ? `R${highlightRound}` : "—"}
+                    />
+                    <DetailStat label="Momentum" value={momentumCopy(ranking, hasPreviousRound)} />
                   </div>
                 </div>
-                <div className="grid gap-2 rounded-3xl border border-white/10 bg-white/5 p-4">
-                  <DetailStat label="Total rounds" value={`${totalRounds}`} />
-                  <DetailStat
-                    label="Last round"
-                    value={highlightRound ? `R${highlightRound}` : "—"}
-                  />
-                  <DetailStat label="Momentum" value={momentumCopy(ranking, hasPreviousRound)} />
-                </div>
-              </div>
+              </motion.div>
             </td>
-          </motion.tr>
+          </tr>
         )}
       </AnimatePresence>
     </>
