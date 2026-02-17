@@ -34,7 +34,7 @@ interface LeaderboardProps {
 export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
   const [viewMode, setViewMode] = useState<"total" | "last-round">("total");
   const [layoutMode, setLayoutMode] = useState<"table" | "cards">("table");
-  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
+  const [density, setDensity] = useState<"comfortable" | "compact" | "skinny">("comfortable");
   const [maxTeams, setMaxTeams] = useState<"all" | 20 | 10>("all");
   const teamMovements = data.rankings;
 
@@ -150,8 +150,8 @@ function LeaderboardTopBar({
   disableRoundMode: boolean;
   layoutMode: "table" | "cards";
   setLayoutMode: (mode: "table" | "cards") => void;
-  density: "comfortable" | "compact";
-  setDensity: (density: "comfortable" | "compact") => void;
+  density: "comfortable" | "compact" | "skinny";
+  setDensity: (density: "comfortable" | "compact" | "skinny") => void;
   maxTeams: "all" | 20 | 10;
   setMaxTeams: (max: "all" | 20 | 10) => void;
   totalTeams: number;
@@ -248,8 +248,8 @@ function DisplayMenu({
 }: {
   layoutMode: "table" | "cards";
   setLayoutMode: (mode: "table" | "cards") => void;
-  density: "comfortable" | "compact";
-  setDensity: (density: "comfortable" | "compact") => void;
+  density: "comfortable" | "compact" | "skinny";
+  setDensity: (density: "comfortable" | "compact" | "skinny") => void;
   maxTeams: "all" | 20 | 10;
   setMaxTeams: (max: "all" | 20 | 10) => void;
   totalTeams: number;
@@ -289,10 +289,11 @@ function DisplayMenu({
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={density}
-          onValueChange={(value) => setDensity(value as "comfortable" | "compact")}
+          onValueChange={(value) => setDensity(value as "comfortable" | "compact" | "skinny")}
         >
           <DropdownMenuRadioItem value="comfortable">Comfortable</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="compact">Compact</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="skinny">Skinny</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator className="bg-white/10" />
         <DropdownMenuLabel className="text-xs uppercase tracking-[0.3em] text-white/60">

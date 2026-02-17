@@ -12,7 +12,7 @@ interface TeamRowProps {
   totalRounds: number;
   highlightRound: number | null;
   viewMode: "total" | "last-round";
-  density: "comfortable" | "compact";
+  density: "comfortable" | "compact" | "skinny";
 }
 
 export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, density }: TeamRowProps) {
@@ -22,6 +22,7 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
   const highlightActive = Boolean(highlightRound);
   const hasPreviousRound = Boolean(highlightRound && highlightRound > 1);
   const isCompact = density === "compact";
+  const isSkinny = density === "skinny";
 
   const podiumStyles = [
     "from-amber-400/30 via-transparent to-transparent",
@@ -59,38 +60,43 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
         )}
         onClick={() => setIsExpanded((prev) => !prev)}
       >
-        <td className={cn("px-4 align-middle", isCompact ? "py-2.5" : "py-4")}>
+        <td className={cn("px-4 align-middle", isSkinny ? "py-1.5" : isCompact ? "py-2.5" : "py-4")}>
           <div className="flex items-center">
             {rankBadge ? (
-              <span className="text-2xl drop-shadow-lg">{rankBadge}</span>
+              <span className={cn("drop-shadow-lg", isSkinny ? "text-xl" : "text-2xl")}>{rankBadge}</span>
             ) : (
               <span className={cn(
                 "flex items-center justify-center rounded-full border border-white/20 bg-white/10 font-semibold",
-                isCompact ? "h-8 w-8 text-base" : "h-10 w-10 text-lg"
+                isSkinny ? "h-7 w-7 text-sm" : isCompact ? "h-8 w-8 text-base" : "h-10 w-10 text-lg"
               )}>
                 {ranking.rank}
               </span>
             )}
           </div>
         </td>
-        <td className={cn("px-4 align-middle", isCompact ? "py-2.5" : "py-4")}>
-          <div className="flex items-center gap-4">
+        <td className={cn("px-4 align-middle", isSkinny ? "py-1.5" : isCompact ? "py-2.5" : "py-4")}>
+          <div className={cn("flex items-center", isSkinny ? "gap-2" : "gap-4")}>
             <div className="min-w-0">
-              <p className={cn("truncate font-semibold tracking-tight", isCompact ? "text-base" : "text-lg")}>
+              <p className={cn(
+                "truncate font-semibold tracking-tight",
+                isSkinny ? "text-sm leading-tight" : isCompact ? "text-base" : "text-lg"
+              )}>
                 {ranking.team.name}
               </p>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/60">
-                Avg {formatPoints(ranking.averageScore)} pts
-              </p>
+              {!isSkinny && (
+                <p className="text-xs uppercase tracking-[0.35em] text-white/60">
+                  Avg {formatPoints(ranking.averageScore)} pts
+                </p>
+              )}
             </div>
-            <MovementChip movement={ranking.movement} />
+            {!isSkinny && <MovementChip movement={ranking.movement} />}
           </div>
         </td>
         {highlightActive && (
           <td
             className={cn(
               "px-4 text-right font-semibold align-middle",
-              isCompact ? "py-2.5 text-sm" : "py-4 text-base",
+              isSkinny ? "py-1.5 text-xs" : isCompact ? "py-2.5 text-sm" : "py-4 text-base",
               viewMode === "last-round" && "text-emerald-200"
             )}
           >
@@ -109,9 +115,9 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
             </span>
           </td>
         )}
-        <td className={cn("px-4 text-right align-middle", isCompact ? "py-2.5" : "py-4")}>
+        <td className={cn("px-4 text-right align-middle", isSkinny ? "py-1.5" : isCompact ? "py-2.5" : "py-4")}>
           <motion.span
-            className={cn("font-bold", isCompact ? "text-lg" : "text-xl")}
+            className={cn("font-bold", isSkinny ? "text-base" : isCompact ? "text-lg" : "text-xl")}
             animate={
               ranking.movement === "up" || ranking.movement === "down"
                 ? { scale: [1, 1.12, 1] }
@@ -122,10 +128,11 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
             {formatPoints(ranking.totalScore)}
           </motion.span>
         </td>
-        <td className={cn("px-4 text-right align-middle", isCompact ? "py-2.5" : "py-4")}>
+        <td className={cn("px-4 text-right align-middle", isSkinny ? "py-1.5" : isCompact ? "py-2.5" : "py-4")}>
           <ChevronDown
             className={cn(
-              "ml-auto h-5 w-5 text-white/60 transition-transform group-hover:text-white",
+              "ml-auto text-white/60 transition-transform group-hover:text-white",
+              isSkinny ? "h-4 w-4" : "h-5 w-5",
               isExpanded && "rotate-180"
             )}
           />
