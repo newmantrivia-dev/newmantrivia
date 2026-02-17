@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { TeamRow } from "./team-row";
 import { getRankBadge } from "@/lib/leaderboard-utils";
 import type { LeaderboardData, TeamRanking, TeamMovement } from "@/lib/types";
