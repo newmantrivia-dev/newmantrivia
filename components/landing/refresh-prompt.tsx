@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAblyConnectionStatus } from "@/lib/ably/hooks";
 
 interface RefreshPromptProps {
   isCompleted: boolean;
@@ -12,16 +13,17 @@ interface RefreshPromptProps {
 export function RefreshPrompt({ isCompleted, delayMs = 120000 }: RefreshPromptProps) {
   const router = useRouter();
   const [hasShownPrompt, setHasShownPrompt] = useState(false);
+  const connectionStatus = useAblyConnectionStatus();
 
   useEffect(() => {
-    if (isCompleted) {
+    if (isCompleted || connectionStatus === "connected") {
       return;
     }
 
     const timer = setTimeout(() => {
       if (!hasShownPrompt) {
-        toast.info("Scores may have updated", {
-          description: "Refresh the page to see the latest standings",
+        toast.warning("Live connection looks unstable", {
+          description: "Standings usually update automatically. Tap refresh if updates stop.",
           duration: 10000,
           action: {
             label: "Refresh",
@@ -35,19 +37,7 @@ export function RefreshPrompt({ isCompleted, delayMs = 120000 }: RefreshPromptPr
     }, delayMs);
 
     return () => clearTimeout(timer);
-  }, [isCompleted, delayMs, hasShownPrompt, router]);
-
-  // Reset prompt state when user manually refreshes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        setHasShownPrompt(false);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
+  }, [isCompleted, connectionStatus, delayMs, hasShownPrompt, router]);
 
   return null;
 }

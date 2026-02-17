@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Check, Copy, Share2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ShareLeaderboardButtonProps {
   eventName: string;
@@ -57,6 +58,30 @@ export function ShareLeaderboardButton({ eventName }: ShareLeaderboardButtonProp
     } catch (error) {
       console.error("Failed to copy leaderboard URL", error);
     }
+
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = url;
+      textArea.style.position = "fixed";
+      textArea.style.top = "-1000px";
+      textArea.style.left = "-1000px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textArea);
+
+      if (copied) {
+        setStatus("copied");
+        setTimeout(() => setStatus("idle"), 2400);
+        return;
+      }
+    } catch (error) {
+      console.error("Fallback copy failed", error);
+    }
+
+    window.prompt("Copy leaderboard link:", url);
+    toast.info("Copy the link from the prompt window.");
   }, [eventName, canNativeShare]);
 
   return (

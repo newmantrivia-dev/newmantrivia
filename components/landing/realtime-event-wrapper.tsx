@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, createContext, useContext } from 'react';
+import { useEffect, useState, useCallback, createContext, useContext, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAblyEvent } from '@/lib/ably/hooks';
 import { ABLY_EVENTS } from '@/lib/ably/config';
@@ -31,22 +31,41 @@ interface RealtimeEventWrapperProps {
 export function RealtimeEventWrapper({
   eventId,
   initialData,
-  mode,
   children,
 }: RealtimeEventWrapperProps) {
   const router = useRouter();
   const [data, setData] = useState<LeaderboardData>(initialData);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date(initialData.lastUpdated));
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleRefresh = useCallback((delayMs = 300) => {
+    if (refreshTimerRef.current) {
+      return;
+    }
+
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
+      router.refresh();
+    }, delayMs);
+  }, [router]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, []);
 
   useAblyEvent(eventId, ABLY_EVENTS.SCORE_UPDATED, useCallback(() => {
     setLastUpdateTime(new Date());
-    router.refresh();
-  }, [router]));
+    scheduleRefresh();
+  }, [scheduleRefresh]));
 
   useAblyEvent(eventId, ABLY_EVENTS.SCORE_DELETED, useCallback(() => {
     setLastUpdateTime(new Date());
-    router.refresh();
-  }, [router]));
+    scheduleRefresh();
+  }, [scheduleRefresh]));
 
   useAblyEvent(eventId, ABLY_EVENTS.ROUND_CHANGED, useCallback((payload) => {
     setData((prev) => ({
@@ -55,26 +74,18 @@ export function RealtimeEventWrapper({
       lastUpdated: new Date(),
     }));
     setLastUpdateTime(new Date());
-    router.refresh();
-  }, [router]));
+    scheduleRefresh();
+  }, [scheduleRefresh]));
 
   useAblyEvent(eventId, ABLY_EVENTS.TEAM_ADDED, useCallback(() => {
     setLastUpdateTime(new Date());
-    router.refresh();
-  }, [router]));
+    scheduleRefresh();
+  }, [scheduleRefresh]));
 
   useAblyEvent(eventId, ABLY_EVENTS.TEAM_REMOVED, useCallback(() => {
     setLastUpdateTime(new Date());
-    router.refresh();
-  }, [router]));
-
-  useAblyEvent(eventId, ABLY_EVENTS.EVENT_STATUS_CHANGED, useCallback((payload) => {
-    if (payload.status === 'completed' && mode === 'active') {
-      router.refresh();
-    } else if (payload.status === 'archived') {
-      router.refresh();
-    }
-  }, [router, mode]));
+    scheduleRefresh();
+  }, [scheduleRefresh]));
 
   useEffect(() => {
     setData(initialData);
@@ -93,4 +104,3 @@ export function RealtimeEventWrapper({
     </RealtimeEventContext.Provider>
   );
 }
-
