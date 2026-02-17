@@ -160,31 +160,6 @@ function calculateLeaderboard(
     );
   };
 
-  const movementByTeam = new Map<string, TeamMovement>(
-    event.teams.map((team) => [team.id, "same"])
-  );
-
-  if (lastCompletedRound && lastCompletedRound > 1) {
-    const currentRanks = buildRankMap(getCumulativeTotalsByRound(lastCompletedRound));
-    const previousRanks = buildRankMap(getCumulativeTotalsByRound(lastCompletedRound - 1));
-
-    for (const team of event.teams) {
-      const currentRank = currentRanks.get(team.id);
-      const previousRank = previousRanks.get(team.id);
-
-      let movement: TeamMovement = "same";
-      if (!previousRank || !currentRank) {
-        movement = "new";
-      } else if (currentRank < previousRank) {
-        movement = "up";
-      } else if (currentRank > previousRank) {
-        movement = "down";
-      }
-
-      movementByTeam.set(team.id, movement);
-    }
-  }
-
   const teamRankings: TeamRanking[] = event.teams.map((team: Team) => {
     const teamScores = event.scores.filter((score: Score) => score.teamId === team.id);
 
@@ -227,7 +202,7 @@ function calculateLeaderboard(
       team,
       totalScore,
       rank: 0, // Will be calculated after sorting
-      movement: movementByTeam.get(team.id) ?? "same",
+      movement: "same",
       roundScores,
       lastRoundPoints,
       recentDelta,
@@ -244,6 +219,35 @@ function calculateLeaderboard(
   teamRankings.forEach((ranking, index) => {
     ranking.rank = index + 1;
   });
+
+  const previousComparisonRound =
+    event.status === "active"
+      ? lastCompletedRound
+      : lastCompletedRound && lastCompletedRound > 1
+        ? lastCompletedRound - 1
+        : null;
+
+  if (previousComparisonRound) {
+    const currentRanks = new Map(
+      teamRankings.map((ranking) => [ranking.team.id, ranking.rank])
+    );
+    const previousRanks = buildRankMap(getCumulativeTotalsByRound(previousComparisonRound));
+
+    for (const ranking of teamRankings) {
+      const currentRank = currentRanks.get(ranking.team.id);
+      const previousRank = previousRanks.get(ranking.team.id);
+
+      if (!previousRank || !currentRank) {
+        ranking.movement = "new";
+      } else if (currentRank < previousRank) {
+        ranking.movement = "up";
+      } else if (currentRank > previousRank) {
+        ranking.movement = "down";
+      } else {
+        ranking.movement = "same";
+      }
+    }
+  }
 
   const isCompletedEvent = event.status === "completed";
 
