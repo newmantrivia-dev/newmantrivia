@@ -3,7 +3,6 @@ import { events } from "@/lib/db/schema";
 import { eq, and, gte, desc, asc } from "drizzle-orm";
 import type {
   TeamRanking,
-  TeamMovement,
   LeaderboardData,
   Event,
   Team,
