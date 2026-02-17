@@ -441,6 +441,15 @@ export async function moveToNextRound(
     }
 
     const currentRound = event.currentRound || 1;
+    const totalRounds = event.rounds.length;
+
+    if (totalRounds === 0) {
+      return { success: false, error: "Event has no rounds configured" };
+    }
+
+    if (currentRound >= totalRounds) {
+      return { success: false, error: "Already at the final round" };
+    }
 
     const teamsWithoutScores = event.teams.filter((team) => {
       return !event.scores.some(
@@ -468,7 +477,6 @@ export async function moveToNextRound(
     // Publish real-time event
     try {
       const user = await getAuthUser();
-      const totalRounds = event.rounds.length;
 
       await publishEvent(eventId, ABLY_EVENTS.ROUND_CHANGED, {
         newRound: nextRound,

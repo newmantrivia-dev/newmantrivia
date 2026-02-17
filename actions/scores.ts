@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { scores, scoreAuditLog, events, teams } from "@/lib/db/schema";
+import { scores, scoreAuditLog, events, teams, rounds } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/server";
 import { publicPaths, adminPaths } from "@/lib/paths";
 import { eq, and } from "drizzle-orm";
@@ -34,8 +34,43 @@ export async function saveScore(
       return { success: false, error: validation.error! };
     }
 
+    const event = await db.query.events.findFirst({
+      where: eq(events.id, input.eventId),
+      columns: { id: true, status: true },
+    });
+
+    if (!event) {
+      return { success: false, error: "Event not found" };
+    }
+
+    if (event.status !== "active") {
+      return { success: false, error: "Scores can only be edited for active events" };
+    }
+
+    const team = await db.query.teams.findFirst({
+      where: and(eq(teams.id, input.teamId), eq(teams.eventId, input.eventId)),
+      columns: { id: true, name: true },
+    });
+
+    if (!team) {
+      return { success: false, error: "Team not found in this event" };
+    }
+
+    const round = await db.query.rounds.findFirst({
+      where: and(
+        eq(rounds.eventId, input.eventId),
+        eq(rounds.roundNumber, input.roundNumber)
+      ),
+      columns: { id: true },
+    });
+
+    if (!round) {
+      return { success: false, error: "Round not found in this event" };
+    }
+
     const existingScore = await db.query.scores.findFirst({
       where: and(
+        eq(scores.eventId, input.eventId),
         eq(scores.teamId, input.teamId),
         eq(scores.roundNumber, input.roundNumber)
       ),
@@ -95,14 +130,9 @@ export async function saveScore(
     });
 
     try {
-      const team = await db.query.teams.findFirst({
-        where: eq(teams.id, input.teamId),
-        columns: { name: true },
-      });
-
       await publishEvent(input.eventId, ABLY_EVENTS.SCORE_UPDATED, {
         teamId: input.teamId,
-        teamName: team?.name || 'Unknown Team',
+        teamName: team.name,
         roundNumber: input.roundNumber,
         points: input.points,
         oldPoints: existingScore ? parseFloat(existingScore.points) : undefined,
@@ -141,6 +171,10 @@ export async function deleteScore(
       return { success: false, error: "Score not found" };
     }
 
+    if (score.eventId !== eventId) {
+      return { success: false, error: "Score does not belong to this event" };
+    }
+
     await db.transaction(async (tx) => {
       await tx.insert(scoreAuditLog).values({
         scoreId: score.id,
@@ -163,7 +197,7 @@ export async function deleteScore(
         columns: { name: true },
       });
 
-      await publishEvent(eventId, ABLY_EVENTS.SCORE_DELETED, {
+      await publishEvent(score.eventId, ABLY_EVENTS.SCORE_DELETED, {
         teamId: score.teamId,
         teamName: team?.name || 'Unknown Team',
         roundNumber: score.roundNumber,
@@ -175,7 +209,7 @@ export async function deleteScore(
       console.error('[Ably] Failed to publish score deletion:', error);
     }
 
-    revalidatePath(adminPaths.events.byId(eventId));
+    revalidatePath(adminPaths.events.byId(score.eventId));
     revalidatePath(publicPaths.home);
     return { success: true, data: undefined };
   } catch (error) {
