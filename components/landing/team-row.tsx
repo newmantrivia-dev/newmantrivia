@@ -30,29 +30,9 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
     "from-orange-300/20 via-transparent to-transparent",
   ];
 
-  const rowGlow =
-    ranking.movement === "up"
-      ? "rgba(34, 197, 94, 0.16)"
-      : ranking.movement === "down"
-        ? "rgba(244, 63, 94, 0.16)"
-        : "rgba(148, 163, 184, 0.1)";
-
   return (
     <>
-      <motion.tr
-        layout
-        initial={ranking.movement === "new" ? { opacity: 0, y: -20 } : false}
-        animate={{
-          opacity: 1,
-          y: 0,
-          filter: `drop-shadow(0px 12px 28px ${rowGlow})`,
-        }}
-        exit={{ opacity: 0, scale: 0.97 }}
-        transition={{
-          layout: { duration: 0.45, ease: "easeInOut" },
-          opacity: { duration: 0.3 },
-          filter: { duration: 0.6 },
-        }}
+      <tr
         className={cn(
           "group cursor-pointer text-white transition",
           isPodium && "bg-linear-to-r",
@@ -137,7 +117,7 @@ export function TeamRow({ ranking, totalRounds, highlightRound, viewMode, densit
             )}
           />
         </td>
-      </motion.tr>
+      </tr>
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.tr

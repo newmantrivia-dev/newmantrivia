@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { TeamRow } from "./team-row";
 import { getRankBadge } from "@/lib/leaderboard-utils";
 import type { LeaderboardData, TeamRanking, TeamMovement } from "@/lib/types";
@@ -90,18 +90,16 @@ export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
             <table className="w-full min-w-[720px]">
               <TableHeader hasLastRound={canShowLastRound} />
               <tbody className="divide-y divide-white/5">
-                <AnimatePresence mode="popLayout">
-                  {visibleTeams.map((ranking) => (
-                    <TeamRow
-                      key={ranking.team.id}
-                      ranking={ranking}
-                      totalRounds={data.totalRounds}
-                      highlightRound={data.lastCompletedRound}
-                      viewMode={effectiveViewMode}
-                      density={density}
-                    />
-                  ))}
-                </AnimatePresence>
+                {visibleTeams.map((ranking) => (
+                  <TeamRow
+                    key={ranking.team.id}
+                    ranking={ranking}
+                    totalRounds={data.totalRounds}
+                    highlightRound={data.lastCompletedRound}
+                    viewMode={effectiveViewMode}
+                    density={density}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
