@@ -15,9 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addTeam } from "@/actions/teams";
 import { addRound } from "@/actions/rounds";
-import { endEvent } from "@/actions/events";
+import { endEvent, resetEvent } from "@/actions/events";
 import { toast } from "sonner";
-import { Flag, Users, Target } from "lucide-react";
+import { Flag, Users, Target, RotateCcw } from "lucide-react";
 import type { Event } from "@/lib/types";
 
 interface EventActionsProps {
@@ -44,6 +44,8 @@ export function EventActions({ event }: EventActionsProps) {
 
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleAddTeam = async () => {
     if (!teamName.trim()) {
@@ -108,6 +110,21 @@ export function EventActions({ event }: EventActionsProps) {
     setIsEnding(false);
   };
 
+  const handleResetEvent = async () => {
+    setIsResetting(true);
+    const result = await resetEvent(event.id);
+
+    if (result.success) {
+      toast.success("Event reset to Round 1");
+      setShowResetDialog(false);
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+
+    setIsResetting(false);
+  };
+
   return (
     <>
       <div className="flex gap-2 flex-wrap">
@@ -118,6 +135,10 @@ export function EventActions({ event }: EventActionsProps) {
         <Button variant="outline" size="sm" onClick={() => setShowAddRoundDialog(true)}>
           <Target className="w-4 h-4 mr-2" />
           Add Round
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowResetDialog(true)}>
+          <RotateCcw className="w-4 h-4 mr-2" />
+          Reset Event
         </Button>
         <Button variant="destructive" size="sm" onClick={() => setShowEndDialog(true)}>
           <Flag className="w-4 h-4 mr-2" />
@@ -257,6 +278,27 @@ export function EventActions({ event }: EventActionsProps) {
             </Button>
             <Button variant="destructive" onClick={handleEndEvent} disabled={isEnding}>
               {isEnding ? "Ending..." : "End Event"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Event Dialog */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Event</DialogTitle>
+            <DialogDescription>
+              This will clear all scores and audit history for &quot;{event.name}&quot; and return
+              the event to Round 1. Teams and rounds will remain.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleResetEvent} disabled={isResetting}>
+              {isResetting ? "Resetting..." : "Reset Event"}
             </Button>
           </DialogFooter>
         </DialogContent>

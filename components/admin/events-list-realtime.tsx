@@ -37,6 +37,8 @@ export function EventsListRealtime() {
               return `${payload.changedByName} archived "${payload.eventName}"`;
             case "deleted":
               return `${payload.changedByName} deleted "${payload.eventName}"`;
+            case "reset":
+              return `${payload.changedByName} reset "${payload.eventName}"`;
             default:
               return `Event "${payload.eventName}" was updated`;
           }

@@ -58,7 +58,7 @@ export type AblyEventPayloads = {
   'event:lifecycle': {
     eventId: string;
     eventName: string;
-    action: 'created' | 'started' | 'ended' | 'reopened' | 'archived' | 'deleted';
+    action: 'created' | 'started' | 'ended' | 'reopened' | 'archived' | 'deleted' | 'reset';
     status: 'draft' | 'upcoming' | 'active' | 'completed' | 'archived';
     changedBy: string;
     changedByName: string;

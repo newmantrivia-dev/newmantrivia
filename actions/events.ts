@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { events, rounds, teams } from "@/lib/db/schema";
+import { events, rounds, teams, scores, scoreAuditLog } from "@/lib/db/schema";
 import { requireAdmin, getAuthUser } from "@/lib/auth/server";
 import { publicPaths, adminPaths } from "@/lib/paths";
 import { eq } from "drizzle-orm";
@@ -10,7 +10,7 @@ import type { ActionResponse, CreateEventInput, UpdateEventInput } from "@/lib/t
 import { publishEvent, publishGlobalEvent } from "@/lib/ably/server";
 import { ABLY_EVENTS } from "@/lib/ably/config";
 
-type LifecycleAction = "created" | "started" | "ended" | "reopened" | "archived" | "deleted";
+type LifecycleAction = "created" | "started" | "ended" | "reopened" | "archived" | "deleted" | "reset";
 type LifecycleStatus = "draft" | "upcoming" | "active" | "completed" | "archived";
 
 async function publishLifecycleEvent({
@@ -489,6 +489,77 @@ export async function moveToNextRound(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to move to next round",
+    };
+  }
+}
+
+export async function resetEvent(
+  eventId: string
+): Promise<ActionResponse> {
+  try {
+    const user = await requireAdmin();
+
+    const event = await db.query.events.findFirst({
+      where: eq(events.id, eventId),
+      with: {
+        rounds: true,
+      },
+    });
+
+    if (!event) {
+      return { success: false, error: "Event not found" };
+    }
+
+    if (event.status !== "active") {
+      return { success: false, error: "Only active events can be reset" };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(scoreAuditLog).where(eq(scoreAuditLog.eventId, eventId));
+      await tx.delete(scores).where(eq(scores.eventId, eventId));
+
+      await tx
+        .update(events)
+        .set({
+          currentRound: 1,
+          startedAt: new Date(),
+          updatedAt: new Date(),
+          endedAt: null,
+        })
+        .where(eq(events.id, eventId));
+    });
+
+    try {
+      await publishEvent(eventId, ABLY_EVENTS.ROUND_CHANGED, {
+        newRound: 1,
+        totalRounds: event.rounds.length,
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+        timestamp: new Date().toISOString(),
+      });
+
+      await publishLifecycleEvent({
+        eventId,
+        eventName: event.name,
+        action: "reset",
+        status: "active",
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+      });
+    } catch (error) {
+      console.error("[Ably] Failed to publish reset event:", error);
+    }
+
+    revalidatePath(adminPaths.root);
+    revalidatePath(adminPaths.events.byId(eventId));
+    revalidatePath(publicPaths.home);
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("Error resetting event:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to reset event",
     };
   }
 }
