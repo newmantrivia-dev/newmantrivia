@@ -322,13 +322,73 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
         }
         onResolve={handleConflictResolve}
       />
-      <div className="border rounded-lg overflow-hidden">
+      <div className="md:hidden space-y-2">
+        {teamScores.map((teamScore) => (
+          <div
+            key={teamScore.teamId}
+            className={cn(
+              "rounded-lg border p-3 transition-colors",
+              isRowHighlighted(teamScore.teamId) && "highlighted-row"
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="font-medium leading-tight">{teamScore.teamName}</span>
+              {!teamScore.isEditing && (
+                <span className="text-lg font-semibold">
+                  {teamScore.savedScore || "—"}
+                </span>
+              )}
+            </div>
+            <div className="mt-3 flex flex-col gap-2">
+              {teamScore.isEditing ? (
+                <>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0"
+                    value={teamScore.currentScore}
+                    onChange={(e) => handleScoreChange(teamScore.teamId, e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, teamScore.teamId)}
+                    disabled={teamScore.isSaving}
+                    className="text-right"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => handleSave(teamScore.teamId)}
+                    disabled={teamScore.isSaving || !teamScore.currentScore}
+                  >
+                    {teamScore.isSaving ? "Saving..." : "Save score"}
+                  </Button>
+                </>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-green-500 flex items-center gap-1 text-sm">
+                    <Check className="w-4 h-4" />
+                    Saved
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(teamScore.teamId)}
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border md:block">
         <table className="w-full">
           <thead className="bg-muted/50">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-semibold">Team Name</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold w-32">Score</th>
-              <th className="px-4 py-3 text-right text-sm font-semibold w-32">Actions</th>
+              <th className="w-32 px-4 py-3 text-right text-sm font-semibold">Score</th>
+              <th className="w-32 px-4 py-3 text-right text-sm font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -336,7 +396,7 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
               <tr
                 key={teamScore.teamId}
                 className={cn(
-                  "hover:bg-muted/50 transition-colors",
+                  "transition-colors hover:bg-muted/50",
                   isRowHighlighted(teamScore.teamId) && "highlighted-row"
                 )}
               >
@@ -353,7 +413,7 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
                       onChange={(e) => handleScoreChange(teamScore.teamId, e.target.value)}
                       onKeyPress={(e) => handleKeyPress(e, teamScore.teamId)}
                       disabled={teamScore.isSaving}
-                      className="text-right max-w-[100px] ml-auto"
+                      className="ml-auto max-w-[100px] text-right"
                       autoFocus
                     />
                   ) : (
@@ -394,8 +454,8 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
       </div>
 
       {teamScores.length > 0 && (
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-muted-foreground min-h-5">
             {modifiedCount > 0 && (
               <span>{modifiedCount} score{modifiedCount === 1 ? '' : 's'} modified</span>
             )}
@@ -406,12 +466,13 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
               </span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="grid gap-2 sm:flex">
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isSavingAll}
+              className="w-full sm:w-auto"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
@@ -420,6 +481,7 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
               onClick={handleSaveAll}
               disabled={isSavingAll || modifiedCount === 0}
               size="sm"
+              className="w-full sm:w-auto"
             >
               <Save className="w-4 h-4 mr-2" />
               {isSavingAll ? "Saving..." : `Save All (${modifiedCount})`}

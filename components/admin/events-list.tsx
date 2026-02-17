@@ -25,16 +25,16 @@ export default async function EventsList() {
     ]);
   
     return (
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         <EventsListRealtime />
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Trivia Events</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">Trivia Events</h1>
             <p className="text-muted-foreground mt-1">
               Manage your trivia events and leaderboards
             </p>
           </div>
-          <Button asChild size="lg">
+          <Button asChild size="lg" className="w-full sm:w-auto">
             <Link href={adminPaths.events.new}>
               <Plus className="w-4 h-4 mr-2" />
               Create New Event
@@ -49,7 +49,7 @@ export default async function EventsList() {
           <section>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xl">⚡</span>
-              <h2 className="text-2xl font-semibold">Active Events</h2>
+              <h2 className="text-xl font-semibold sm:text-2xl">Active Events</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {activeEvents.map((event) => (
@@ -64,7 +64,7 @@ export default async function EventsList() {
           <section>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xl">📅</span>
-              <h2 className="text-2xl font-semibold">Upcoming Events</h2>
+              <h2 className="text-xl font-semibold sm:text-2xl">Upcoming Events</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {upcomingEvents.map((event) => (
@@ -79,7 +79,7 @@ export default async function EventsList() {
           <section>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xl">📝</span>
-              <h2 className="text-2xl font-semibold">Draft Events</h2>
+              <h2 className="text-xl font-semibold sm:text-2xl">Draft Events</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {draftEvents.map((event) => (
@@ -92,12 +92,12 @@ export default async function EventsList() {
         {/* Recently Completed */}
         {recentlyCompleted.length > 0 && (
           <section>
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">✅</span>
-                <h2 className="text-2xl font-semibold">Recently Completed</h2>
+                <h2 className="text-xl font-semibold sm:text-2xl">Recently Completed</h2>
               </div>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="w-full sm:w-auto">
                 <Link href={adminPaths.history}>View All History →</Link>
               </Button>
             </div>
@@ -114,13 +114,13 @@ export default async function EventsList() {
           upcomingEvents.length === 0 &&
           draftEvents.length === 0 &&
           recentlyCompleted.length === 0 && (
-            <Card className="p-12 text-center">
+            <Card className="p-6 text-center sm:p-12">
               <div className="text-6xl mb-4">🎯</div>
-              <h3 className="text-2xl font-semibold mb-2">No Events Yet</h3>
+              <h3 className="text-xl font-semibold mb-2 sm:text-2xl">No Events Yet</h3>
               <p className="text-muted-foreground mb-6">
                 Create your first trivia event to get started
               </p>
-              <Button asChild size="lg">
+              <Button asChild size="lg" className="w-full sm:w-auto">
                 <Link href={adminPaths.events.new}>
                   <Plus className="w-4 h-4 mr-2" />
                   Create New Event

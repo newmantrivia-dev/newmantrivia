@@ -121,9 +121,9 @@ export function RealtimeEventDashboard({
   }, [router]));
 
   return (
-    <RealtimeProvider eventId={eventId}>
+      <RealtimeProvider eventId={eventId}>
       <EventDashboardContext.Provider value={event}>
-        <div className="flex items-center justify-end gap-4 mb-4">
+        <div className="mb-4 flex items-center justify-start gap-4 sm:justify-end">
           <ConnectionStatus variant="admin" />
         </div>
         {children}
@@ -131,4 +131,3 @@ export function RealtimeEventDashboard({
     </RealtimeProvider>
   );
 }
-

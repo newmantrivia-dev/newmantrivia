@@ -53,11 +53,11 @@ export function AdminNav() {
   return (
     <nav className="border-b bg-card">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 justify-between items-center">
-          <div className="flex items-center gap-8">
+        <div className="flex h-14 items-center justify-between sm:h-16">
+          <div className="flex items-center gap-4 sm:gap-8 min-w-0">
             <Link href={adminPaths.root} className="flex items-center gap-2">
-              <span className="text-2xl">🎯</span>
-              <span className="text-xl font-bold">Trivia Admin</span>
+              <span className="text-xl sm:text-2xl">🎯</span>
+              <span className="text-base font-bold sm:text-xl">Trivia Admin</span>
             </Link>
 
             <div className="hidden md:flex gap-1">

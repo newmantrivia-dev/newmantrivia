@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ComponentType } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -18,7 +19,7 @@ import { adminPaths } from "@/lib/paths";
 import { startEvent, endEvent, deleteEvent } from "@/actions/events";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { Play, Edit, Trash2, Eye, Flag } from "lucide-react";
+import { Play, Edit, Trash2, Eye, Flag, CalendarDays, Clock3, Layers3, Users } from "lucide-react";
 import type { Event } from "@/lib/types";
 
 interface EventCardProps {
@@ -95,86 +96,92 @@ export function EventCard({ event }: EventCardProps) {
   const teamCount = event.teams?.length || 0;
   const roundCount = event.rounds?.length || 0;
 
+  const metaItems: Array<{ key: string; icon: ComponentType<{ className?: string }>; text: string }> = [];
+
+  if (event.status === "active") {
+    metaItems.push(
+      { key: "round", icon: Layers3, text: `Round ${event.currentRound} of ${roundCount}` },
+      { key: "teams", icon: Users, text: `${teamCount} teams` }
+    );
+    if (event.startedAt) {
+      metaItems.push({
+        key: "started",
+        icon: Clock3,
+        text: `Started ${formatDistanceToNow(new Date(event.startedAt), { addSuffix: true })}`,
+      });
+    }
+  }
+
+  if (event.status === "upcoming" && event.scheduledDate) {
+    metaItems.push({
+      key: "scheduled",
+      icon: CalendarDays,
+      text: `Scheduled for ${new Date(event.scheduledDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })}`,
+    });
+  }
+
+  if (event.status === "draft") {
+    metaItems.push({ key: "rounds", icon: Layers3, text: `${roundCount} rounds configured` });
+    if (teamCount > 0) {
+      metaItems.push({ key: "teams", icon: Users, text: `${teamCount} teams` });
+    }
+  }
+
+  if (event.status === "completed" && event.endedAt) {
+    metaItems.push({
+      key: "completed",
+      icon: Clock3,
+      text: `Completed ${formatDistanceToNow(new Date(event.endedAt), { addSuffix: true })}`,
+    });
+  }
+
   return (
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="space-y-1 flex-1">
-              <CardTitle className="text-xl">{event.name}</CardTitle>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1 flex-1 min-w-0">
+              <CardTitle className="text-lg sm:text-xl break-words">{event.name}</CardTitle>
               {event.description && (
                 <CardDescription className="line-clamp-2">
                   {event.description}
                 </CardDescription>
               )}
             </div>
-            {getStatusBadge()}
+            <div className="self-start">{getStatusBadge()}</div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-3">
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {event.status === "active" && (
-              <>
-                <span>
-                  Round {event.currentRound} of {roundCount}
-                </span>
-                <span>•</span>
-                <span>{teamCount} teams</span>
-                <span>•</span>
-                <span>
-                  Started {event.startedAt && formatDistanceToNow(new Date(event.startedAt), { addSuffix: true })}
-                </span>
-              </>
-            )}
-
-            {event.status === "upcoming" && (
-              <>
-                {event.scheduledDate && (
-                  <span>
-                    Scheduled for{" "}
-                    {new Date(event.scheduledDate).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                )}
-              </>
-            )}
-
-            {event.status === "draft" && (
-              <>
-                <span>{roundCount} rounds configured</span>
-                {teamCount > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>{teamCount} teams</span>
-                  </>
-                )}
-              </>
-            )}
-
-            {event.status === "completed" && event.endedAt && (
-              <span>
-                Completed {formatDistanceToNow(new Date(event.endedAt), { addSuffix: true })}
-              </span>
-            )}
+          <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+            {metaItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.key} className="flex items-start gap-2 min-w-0">
+                  <Icon className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span className="break-words">{item.text}</span>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
 
-        <CardFooter className="flex gap-2 flex-wrap">
+        <CardFooter className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
           {event.status === "draft" && (
             <>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <Link href={adminPaths.events.edit(event.id)}>
                   <Edit className="w-4 h-4 mr-1" />
                   Edit
                 </Link>
               </Button>
-              <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
+              <Button variant="destructive" size="sm" className="w-full sm:w-auto" onClick={() => setShowDeleteDialog(true)}>
                 <Trash2 className="w-4 h-4 mr-1" />
                 Delete
               </Button>
@@ -183,17 +190,17 @@ export function EventCard({ event }: EventCardProps) {
 
           {event.status === "upcoming" && (
             <>
-              <Button size="sm" onClick={handleStart} disabled={isStarting}>
+              <Button size="sm" className="w-full sm:w-auto" onClick={handleStart} disabled={isStarting}>
                 <Play className="w-4 h-4 mr-1" />
                 {isStarting ? "Starting..." : "Start Event"}
               </Button>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <Link href={adminPaths.events.edit(event.id)}>
                   <Edit className="w-4 h-4 mr-1" />
                   Edit
                 </Link>
               </Button>
-              <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
+              <Button variant="destructive" size="sm" className="w-full sm:w-auto" onClick={() => setShowDeleteDialog(true)}>
                 <Trash2 className="w-4 h-4 mr-1" />
                 Delete
               </Button>
@@ -202,7 +209,7 @@ export function EventCard({ event }: EventCardProps) {
 
           {event.status === "active" && (
             <>
-              <Button size="sm" asChild>
+              <Button size="sm" asChild className="w-full sm:w-auto">
                 <Link href={adminPaths.events.byId(event.id)}>
                   <Eye className="w-4 h-4 mr-1" />
                   Manage Event
@@ -211,6 +218,7 @@ export function EventCard({ event }: EventCardProps) {
               <Button
                 variant="destructive"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => setShowEndDialog(true)}
               >
                 <Flag className="w-4 h-4 mr-1" />
@@ -220,7 +228,7 @@ export function EventCard({ event }: EventCardProps) {
           )}
 
           {event.status === "completed" && (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
               <Link href={adminPaths.events.view(event.id)}>
                 <Eye className="w-4 h-4 mr-1" />
                 View Details

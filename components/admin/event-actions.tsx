@@ -127,20 +127,40 @@ export function EventActions({ event }: EventActionsProps) {
 
   return (
     <>
-      <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" size="sm" onClick={() => setShowAddTeamDialog(true)}>
+      <div className="grid w-full gap-2 sm:flex sm:flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start sm:w-auto sm:justify-center"
+          onClick={() => setShowAddTeamDialog(true)}
+        >
           <Users className="w-4 h-4 mr-2" />
           Add Team
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setShowAddRoundDialog(true)}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start sm:w-auto sm:justify-center"
+          onClick={() => setShowAddRoundDialog(true)}
+        >
           <Target className="w-4 h-4 mr-2" />
           Add Round
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setShowResetDialog(true)}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start sm:w-auto sm:justify-center"
+          onClick={() => setShowResetDialog(true)}
+        >
           <RotateCcw className="w-4 h-4 mr-2" />
           Reset Event
         </Button>
-        <Button variant="destructive" size="sm" onClick={() => setShowEndDialog(true)}>
+        <Button
+          variant="destructive"
+          size="sm"
+          className="w-full justify-start sm:w-auto sm:justify-center"
+          onClick={() => setShowEndDialog(true)}
+        >
           <Flag className="w-4 h-4 mr-2" />
           End Event
         </Button>

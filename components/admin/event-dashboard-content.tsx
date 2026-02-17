@@ -26,67 +26,69 @@ export function EventDashboardContent() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" asChild>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+          <Button variant="ghost" size="icon" className="mt-0.5 h-9 w-9 shrink-0" asChild>
             <Link href={adminPaths.root}>
               <ArrowLeft className="w-4 h-4" />
             </Link>
           </Button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-bold truncate">{event.name}</h1>
+            <h1 className="truncate text-2xl font-bold sm:text-3xl">{event.name}</h1>
             {event.description && (
-              <p className="text-muted-foreground mt-1">{event.description}</p>
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base">{event.description}</p>
             )}
-            <div className="flex items-center gap-3 mt-2 flex-wrap">
+            <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
               <Badge className="bg-green-500">Active</Badge>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs text-muted-foreground sm:text-sm">
                 Round {currentRound} of {totalRounds}
               </span>
               {event.startedAt && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs text-muted-foreground sm:text-sm">
                   Started {formatDistanceToNow(new Date(event.startedAt), { addSuffix: true })}
                 </span>
               )}
             </div>
           </div>
         </div>
-        <EventActions event={event} />
+        <div className="w-full lg:w-auto">
+          <EventActions event={event} />
+        </div>
       </div>
 
       <Separator />
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
+            <CardTitle className="text-xs font-medium sm:text-sm">Total Teams</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{event.teams.length}</div>
+            <div className="text-xl font-bold sm:text-2xl">{event.teams.length}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Rounds</CardTitle>
+            <CardTitle className="text-xs font-medium sm:text-sm">Total Rounds</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalRounds}</div>
+            <div className="text-xl font-bold sm:text-2xl">{totalRounds}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Round</CardTitle>
+            <CardTitle className="text-xs font-medium sm:text-sm">Current Round</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold sm:text-2xl">
               {currentRound} / {totalRounds}
             </div>
           </CardContent>

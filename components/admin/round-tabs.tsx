@@ -136,13 +136,13 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-3 sm:p-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold">Score Entry</h2>
+          <h2 className="text-xl font-semibold sm:text-2xl">Score Entry</h2>
         </div>
 
-        <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto">
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto whitespace-nowrap">
           {event.rounds.map((round) => {
             const isComplete = isRoundComplete(round.roundNumber);
             const isCurrent = round.roundNumber === effectiveCurrentRound;
@@ -151,7 +151,7 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
               <TabsTrigger
                 key={round.id}
                 value={round.roundNumber.toString()}
-                className="relative"
+                className="relative shrink-0"
               >
                 <span>
                   {round.roundName || `Round ${round.roundNumber}`}
@@ -172,7 +172,7 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
 
         {event.rounds.map((round) => (
           <TabsContent key={round.id} value={round.roundNumber.toString()} className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-lg font-semibold">
                   {round.roundName || `Round ${round.roundNumber}`}
@@ -184,26 +184,37 @@ export function RoundTabs({ event, currentRound }: RoundTabsProps) {
               </div>
 
               {round.roundNumber === effectiveCurrentRound && (
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                   {round.roundNumber > 1 && (
-                    <Button variant="outline" onClick={handleMoveToPrevious} disabled={isMoving}>
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={handleMoveToPrevious}
+                      disabled={isMoving}
+                    >
                       {isMoving ? (
                         "Moving..."
                       ) : (
                         <>
                           <ChevronLeft className="w-4 h-4 mr-1" />
-                          Back to Round {effectiveCurrentRound - 1}
+                          <span className="sm:hidden">Previous</span>
+                          <span className="hidden sm:inline">
+                            Back to Round {effectiveCurrentRound - 1}
+                          </span>
                         </>
                       )}
                     </Button>
                   )}
                   {round.roundNumber < event.rounds.length && (
-                    <Button onClick={handleMoveToNext} disabled={isMoving}>
+                    <Button className="w-full sm:w-auto" onClick={handleMoveToNext} disabled={isMoving}>
                       {isMoving ? (
                         "Moving..."
                       ) : (
                         <>
-                          Move to Round {effectiveCurrentRound + 1}
+                          <span className="sm:hidden">Next round</span>
+                          <span className="hidden sm:inline">
+                            Move to Round {effectiveCurrentRound + 1}
+                          </span>
                           <ChevronRight className="w-4 h-4 ml-1" />
                         </>
                       )}
