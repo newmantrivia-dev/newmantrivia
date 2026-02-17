@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import EventDisplay from "@/components/landing/event-display";
+import { PublicRealtimeBridge } from "@/components/landing/public-realtime-bridge";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ export default function Home() {
         <BackdropLayers />
       </div>
       <div className="relative z-10 flex min-h-screen flex-col">
+        <PublicRealtimeBridge />
         <Suspense fallback={<LoadingState />}>
           <EventDisplay />
         </Suspense>

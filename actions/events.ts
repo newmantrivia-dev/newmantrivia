@@ -7,8 +7,37 @@ import { requireAdmin, getAuthUser } from "@/lib/auth/server";
 import { publicPaths, adminPaths } from "@/lib/paths";
 import { eq } from "drizzle-orm";
 import type { ActionResponse, CreateEventInput, UpdateEventInput } from "@/lib/types";
-import { publishEvent } from "@/lib/ably/server";
+import { publishEvent, publishGlobalEvent } from "@/lib/ably/server";
 import { ABLY_EVENTS } from "@/lib/ably/config";
+
+type LifecycleAction = "created" | "started" | "ended" | "reopened" | "archived" | "deleted";
+type LifecycleStatus = "draft" | "upcoming" | "active" | "completed" | "archived";
+
+async function publishLifecycleEvent({
+  eventId,
+  eventName,
+  action,
+  status,
+  changedBy,
+  changedByName,
+}: {
+  eventId: string;
+  eventName: string;
+  action: LifecycleAction;
+  status: LifecycleStatus;
+  changedBy: string;
+  changedByName: string;
+}) {
+  await publishGlobalEvent(ABLY_EVENTS.EVENT_LIFECYCLE, {
+    eventId,
+    eventName,
+    action,
+    status,
+    changedBy,
+    changedByName,
+    timestamp: new Date().toISOString(),
+  });
+}
 
 export async function createEvent(
   input: CreateEventInput
@@ -67,6 +96,19 @@ export async function createEvent(
       return event.id;
     });
 
+    try {
+      await publishLifecycleEvent({
+        eventId,
+        eventName: input.name.trim(),
+        action: "created",
+        status,
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+      });
+    } catch (error) {
+      console.error("[Ably] Failed to publish event lifecycle:", error);
+    }
+
     revalidatePath(adminPaths.root);
     return { success: true, data: { eventId } };
   } catch (error) {
@@ -122,7 +164,7 @@ export async function startEvent(
   eventId: string
 ): Promise<ActionResponse> {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
 
     const event = await db.query.events.findFirst({
       where: eq(events.id, eventId),
@@ -160,6 +202,24 @@ export async function startEvent(
       })
       .where(eq(events.id, eventId));
 
+    try {
+      await publishEvent(eventId, ABLY_EVENTS.EVENT_STATUS_CHANGED, {
+        status: "active",
+        timestamp: new Date().toISOString(),
+      });
+
+      await publishLifecycleEvent({
+        eventId,
+        eventName: event.name,
+        action: "started",
+        status: "active",
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+      });
+    } catch (error) {
+      console.error("[Ably] Failed to publish event lifecycle:", error);
+    }
+
     revalidatePath(adminPaths.root);
     revalidatePath(adminPaths.events.byId(eventId));
     revalidatePath(publicPaths.home);
@@ -177,7 +237,7 @@ export async function endEvent(
   eventId: string
 ): Promise<ActionResponse> {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
 
     const event = await db.query.events.findFirst({
       where: eq(events.id, eventId),
@@ -205,6 +265,15 @@ export async function endEvent(
         status: 'completed',
         timestamp: new Date().toISOString(),
       });
+
+      await publishLifecycleEvent({
+        eventId,
+        eventName: event.name,
+        action: "ended",
+        status: "completed",
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+      });
     } catch (error) {
       console.error('[Ably] Failed to publish event status change:', error);
     }
@@ -226,7 +295,7 @@ export async function archiveEvent(
   eventId: string
 ): Promise<ActionResponse> {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
 
     const event = await db.query.events.findFirst({
       where: eq(events.id, eventId),
@@ -253,6 +322,15 @@ export async function archiveEvent(
         status: 'archived',
         timestamp: new Date().toISOString(),
       });
+
+      await publishLifecycleEvent({
+        eventId,
+        eventName: event.name,
+        action: "archived",
+        status: "archived",
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+      });
     } catch (error) {
       console.error('[Ably] Failed to publish event status change:', error);
     }
@@ -274,7 +352,7 @@ export async function reopenEvent(
   eventId: string
 ): Promise<ActionResponse> {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
 
     const event = await db.query.events.findFirst({
       where: eq(events.id, eventId),
@@ -312,6 +390,15 @@ export async function reopenEvent(
       await publishEvent(eventId, ABLY_EVENTS.EVENT_STATUS_CHANGED, {
         status: 'active',
         timestamp: new Date().toISOString(),
+      });
+
+      await publishLifecycleEvent({
+        eventId,
+        eventName: event.name,
+        action: "reopened",
+        status: "active",
+        changedBy: user.id,
+        changedByName: user.name || user.email,
       });
     } catch (error) {
       console.error('[Ably] Failed to publish event status change:', error);
@@ -410,7 +497,7 @@ export async function deleteEvent(
   eventId: string
 ): Promise<ActionResponse> {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
 
     const event = await db.query.events.findFirst({
       where: eq(events.id, eventId),
@@ -428,6 +515,19 @@ export async function deleteEvent(
     }
 
     await db.delete(events).where(eq(events.id, eventId));
+
+    try {
+      await publishLifecycleEvent({
+        eventId,
+        eventName: event.name,
+        action: "deleted",
+        status: event.status,
+        changedBy: user.id,
+        changedByName: user.name || user.email,
+      });
+    } catch (error) {
+      console.error("[Ably] Failed to publish event lifecycle:", error);
+    }
 
     revalidatePath(adminPaths.root);
     return { success: true, data: undefined };

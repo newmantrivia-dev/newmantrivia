@@ -34,6 +34,7 @@ export type TeamRanking = {
   team: Team;
   totalScore: number;
   rank: number;
+  movement: TeamMovement;
   roundScores: {
     roundNumber: number;
     points: number;
@@ -42,6 +43,8 @@ export type TeamRanking = {
   recentDelta: number;
   averageScore: number;
 };
+
+export type TeamMovement = "up" | "down" | "same" | "new";
 
 export type LeaderboardData = {
   event: Event;

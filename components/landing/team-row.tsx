@@ -4,13 +4,11 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { getRankBadge } from "@/lib/leaderboard-utils";
-import type { TeamRanking } from "@/lib/types";
+import type { TeamRanking, TeamMovement } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type TeamMovement = "up" | "down" | "same" | "new";
-
 interface TeamRowProps {
-  ranking: TeamRanking & { movement: TeamMovement };
+  ranking: TeamRanking;
   totalRounds: number;
   highlightRound: number | null;
   viewMode: "total" | "last-round";
@@ -216,7 +214,7 @@ function DetailStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function momentumCopy(ranking: TeamRanking & { movement: TeamMovement }) {
+function momentumCopy(ranking: TeamRanking) {
   if (ranking.recentDelta > 0) {
     return `+${formatPoints(ranking.recentDelta)} last round`;
   }

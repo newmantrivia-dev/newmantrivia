@@ -15,14 +15,6 @@ function validateScore(points: number): { valid: boolean; error?: string } {
     return { valid: false, error: "Score must be a valid number" };
   }
 
-  if (points < 0) {
-    return { valid: false, error: "Score cannot be negative" };
-  }
-
-  if (points > 1000) {
-    return { valid: false, error: "Score cannot exceed 1000 points" };
-  }
-
   const decimalPlaces = (points.toString().split(".")[1] || "").length;
   if (decimalPlaces > 2) {
     return { valid: false, error: "Score cannot have more than 2 decimal places" };

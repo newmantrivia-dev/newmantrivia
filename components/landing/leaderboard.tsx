@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TeamRow } from "./team-row";
 import { getRankBadge } from "@/lib/leaderboard-utils";
-import type { LeaderboardData, TeamRanking } from "@/lib/types";
+import type { LeaderboardData, TeamRanking, TeamMovement } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -22,67 +22,9 @@ interface LeaderboardProps {
   isCompleted: boolean;
 }
 
-type TeamMovement = "up" | "down" | "same" | "new";
-
-interface TeamWithMovement extends TeamRanking {
-  movement: TeamMovement;
-}
-
 export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
   const [viewMode, setViewMode] = useState<"total" | "last-round">("total");
-  const [hasHydrated, setHasHydrated] = useState(false);
-  const storageKey = `trivia-rankings-${data.event.id}`;
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
-
-  const teamMovements = useMemo(() => {
-    if (!hasHydrated || typeof window === "undefined") {
-      return data.rankings.map((ranking) => ({
-        ...ranking,
-        movement: "same" as TeamMovement,
-      }));
-    }
-
-    let previousRankings: Array<{ teamId: string; rank: number }> = [];
-    try {
-      const previousRankingsStr = window.localStorage.getItem(storageKey);
-      previousRankings = previousRankingsStr ? JSON.parse(previousRankingsStr) : [];
-    } catch (error) {
-      console.warn("Unable to read leaderboard cache", error);
-    }
-
-    return data.rankings.map((ranking) => {
-      const prevRank = previousRankings.find(
-        (pr) => pr.teamId === ranking.team.id
-      )?.rank;
-
-      let movement: TeamMovement = "same";
-      if (!prevRank) {
-        movement = "new";
-      } else if (prevRank > ranking.rank) {
-        movement = "up";
-      } else if (prevRank < ranking.rank) {
-        movement = "down";
-      }
-
-      return { ...ranking, movement };
-    });
-  }, [data, storageKey, hasHydrated]);
-
-  useEffect(() => {
-    if (!hasHydrated || typeof window === "undefined") return;
-    const currentRankings = data.rankings.map((r) => ({
-      teamId: r.team.id,
-      rank: r.rank,
-    }));
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(currentRankings));
-    } catch (error) {
-      console.warn("Unable to persist leaderboard cache", error);
-    }
-  }, [data, storageKey, hasHydrated]);
+  const teamMovements = data.rankings;
 
   const canShowLastRound = Boolean(data.lastCompletedRound);
   const effectiveViewMode: "total" | "last-round" =
@@ -303,7 +245,7 @@ function MobileTeamCard({
   totalRounds,
   highlightRound,
 }: {
-  ranking: TeamWithMovement;
+  ranking: TeamRanking;
   totalRounds: number;
   highlightRound: number | null;
 }) {

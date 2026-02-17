@@ -1,7 +1,7 @@
 import Ably from 'ably';
 import type { Rest } from 'ably';
 import type { AblyEventPayloads } from './config';
-import { getEventChannel } from './config';
+import { getEventChannel, getGlobalEventsChannel } from './config';
 import { env } from '@/lib/env';
 
 let ablyServer: Rest | null = null;
@@ -34,5 +34,22 @@ export async function publishEvent<T extends keyof AblyEventPayloads>(
     console.log(`[Ably] Published ${eventType} to ${getEventChannel(eventId)}`);
   } catch (error) {
     console.error('[Ably] Publish failed:', error);
+  }
+}
+
+export async function publishGlobalEvent<T extends keyof AblyEventPayloads>(
+  eventType: T,
+  payload: AblyEventPayloads[T]
+): Promise<void> {
+  try {
+    const ably = getAblyServer();
+    if (!ably) return;
+
+    const channel = ably.channels.get(getGlobalEventsChannel());
+    await channel.publish(eventType, payload);
+
+    console.log(`[Ably] Published ${eventType} to ${getGlobalEventsChannel()}`);
+  } catch (error) {
+    console.error('[Ably] Global publish failed:', error);
   }
 }

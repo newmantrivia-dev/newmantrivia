@@ -12,6 +12,7 @@ import {
 } from "@/lib/queries/events";
 import { requireAdmin } from "@/lib/auth/server";
 import { Plus } from "lucide-react";
+import { EventsListRealtime } from "./events-list-realtime";
 
 export default async function EventsList() {
     await requireAdmin();
@@ -25,6 +26,7 @@ export default async function EventsList() {
   
     return (
       <div className="space-y-8">
+        <EventsListRealtime />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Trivia Events</h1>

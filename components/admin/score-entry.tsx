@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
   } = useRealtimeContext();
   const [teamScores, setTeamScores] = useState<TeamScore[]>([]);
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [isRefreshing, startRefreshTransition] = useTransition();
   const [currentConflict, setCurrentConflict] = useState<{
     teamId: string;
     roundNumber: number;
@@ -145,6 +146,9 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
               : ts
           )
         );
+        startRefreshTransition(() => {
+          router.refresh();
+        });
       } else {
         toast.error(result.error);
         setTeamScores((prev) =>
@@ -177,7 +181,7 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
       );
       setEditing(teamId, roundNumber, true);
     }
-  }, [teamScores, setEditing, roundNumber, event.id]);
+  }, [teamScores, setEditing, roundNumber, event.id, router, startRefreshTransition]);
 
   const handleConflictResolve = useCallback(
     async (accept: boolean) => {
@@ -269,7 +273,9 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
       );
 
       toast.success(`Saved ${modifiedScores.length} score${modifiedScores.length === 1 ? '' : 's'}!`);
-      router.refresh();
+      startRefreshTransition(() => {
+        router.refresh();
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save scores");
     } finally {
@@ -278,7 +284,9 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
   };
 
   const handleRefresh = () => {
-    router.refresh();
+    startRefreshTransition(() => {
+      router.refresh();
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent, teamId: string) => {
@@ -340,7 +348,6 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
                     <Input
                       type="number"
                       step="0.01"
-                      min="0"
                       placeholder="0"
                       value={teamScore.currentScore}
                       onChange={(e) => handleScoreChange(teamScore.teamId, e.target.value)}
@@ -391,6 +398,12 @@ export function ScoreEntry({ event, roundNumber }: ScoreEntryProps) {
           <div className="text-sm text-muted-foreground">
             {modifiedCount > 0 && (
               <span>{modifiedCount} score{modifiedCount === 1 ? '' : 's'} modified</span>
+            )}
+            {isRefreshing && (
+              <span className="inline-flex items-center gap-1 ml-3">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Refreshing standings...
+              </span>
             )}
           </div>
           <div className="flex gap-2">

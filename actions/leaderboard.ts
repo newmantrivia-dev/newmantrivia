@@ -3,6 +3,7 @@ import { events } from "@/lib/db/schema";
 import { eq, and, gte, desc, asc } from "drizzle-orm";
 import type {
   TeamRanking,
+  TeamMovement,
   LeaderboardData,
   Event,
   Team,
@@ -102,6 +103,58 @@ function calculateLeaderboard(
       ? completedRoundNumbers[completedRoundNumbers.length - 1]
       : null;
 
+  const getCumulativeTotalsByRound = (upToRound: number) => {
+    const totals = new Map<string, number>(
+      event.teams.map((team) => [team.id, 0])
+    );
+
+    for (const score of event.scores) {
+      if (score.roundNumber > upToRound) continue;
+      const points = parseFloat(score.points);
+      if (Number.isNaN(points)) continue;
+      totals.set(score.teamId, (totals.get(score.teamId) ?? 0) + points);
+    }
+
+    return totals;
+  };
+
+  const buildRankMap = (totals: Map<string, number>) => {
+    const sortedTeams = [...event.teams].sort((a, b) => {
+      const totalDelta = (totals.get(b.id) ?? 0) - (totals.get(a.id) ?? 0);
+      if (totalDelta !== 0) return totalDelta;
+      return a.name.localeCompare(b.name);
+    });
+
+    return new Map<string, number>(
+      sortedTeams.map((team, index) => [team.id, index + 1])
+    );
+  };
+
+  const movementByTeam = new Map<string, TeamMovement>(
+    event.teams.map((team) => [team.id, "same"])
+  );
+
+  if (lastCompletedRound && lastCompletedRound > 1) {
+    const currentRanks = buildRankMap(getCumulativeTotalsByRound(lastCompletedRound));
+    const previousRanks = buildRankMap(getCumulativeTotalsByRound(lastCompletedRound - 1));
+
+    for (const team of event.teams) {
+      const currentRank = currentRanks.get(team.id);
+      const previousRank = previousRanks.get(team.id);
+
+      let movement: TeamMovement = "same";
+      if (!previousRank || !currentRank) {
+        movement = "new";
+      } else if (currentRank < previousRank) {
+        movement = "up";
+      } else if (currentRank > previousRank) {
+        movement = "down";
+      }
+
+      movementByTeam.set(team.id, movement);
+    }
+  }
+
   const teamRankings: TeamRanking[] = event.teams.map((team: Team) => {
     const teamScores = event.scores.filter((score: Score) => score.teamId === team.id);
 
@@ -129,6 +182,7 @@ function calculateLeaderboard(
       team,
       totalScore,
       rank: 0, // Will be calculated after sorting
+      movement: movementByTeam.get(team.id) ?? "same",
       roundScores,
       lastRoundPoints,
       recentDelta,
@@ -137,7 +191,11 @@ function calculateLeaderboard(
   });
 
   // Sort by total score (descending) and assign ranks
-  teamRankings.sort((a, b) => b.totalScore - a.totalScore);
+  teamRankings.sort((a, b) => {
+    const totalDelta = b.totalScore - a.totalScore;
+    if (totalDelta !== 0) return totalDelta;
+    return a.team.name.localeCompare(b.team.name);
+  });
   teamRankings.forEach((ranking, index) => {
     ranking.rank = index + 1;
   });

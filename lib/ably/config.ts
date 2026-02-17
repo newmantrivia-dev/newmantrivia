@@ -5,6 +5,7 @@ export const ABLY_EVENTS = {
   TEAM_ADDED: 'team:added',
   TEAM_REMOVED: 'team:removed',
   EVENT_STATUS_CHANGED: 'event:status',
+  EVENT_LIFECYCLE: 'event:lifecycle',
 } as const;
 
 export type AblyEventPayloads = {
@@ -53,13 +54,26 @@ export type AblyEventPayloads = {
     status: 'active' | 'completed' | 'archived';
     timestamp: string;
   };
+
+  'event:lifecycle': {
+    eventId: string;
+    eventName: string;
+    action: 'created' | 'started' | 'ended' | 'reopened' | 'archived' | 'deleted';
+    status: 'draft' | 'upcoming' | 'active' | 'completed' | 'archived';
+    changedBy: string;
+    changedByName: string;
+    timestamp: string;
+  };
 };
 
 export function getEventChannel(eventId: string): string {
   return `event:${eventId}`;
 }
 
+export function getGlobalEventsChannel(): string {
+  return "event:global";
+}
+
 export function isValidEventId(eventId: string): boolean {
   return typeof eventId === 'string' && eventId.length > 0;
 }
-
