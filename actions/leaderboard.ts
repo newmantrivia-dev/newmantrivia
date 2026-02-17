@@ -206,7 +206,22 @@ function calculateLeaderboard(
       : 0;
     const recentDelta = lastCompletedRound ? lastRoundPoints - previousRoundPoints : 0;
 
-    const averageScore = event.rounds.length > 0 ? totalScore / event.rounds.length : 0;
+    const averageRoundNumbers = sortedRoundNumbers.filter(
+      (roundNumber) =>
+        lastCompletedRound !== null &&
+        roundNumber <= lastCompletedRound &&
+        roundNumber >= team.joinedRound
+    );
+
+    const averagePointsTotal = averageRoundNumbers.reduce((sum, roundNumber) => {
+      const points = roundScores.find((rs) => rs.roundNumber === roundNumber)?.points ?? 0;
+      return sum + points;
+    }, 0);
+
+    const averageScore =
+      averageRoundNumbers.length > 0
+        ? averagePointsTotal / averageRoundNumbers.length
+        : 0;
 
     return {
       team,
