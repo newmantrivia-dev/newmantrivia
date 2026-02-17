@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Leaderboard } from "./leaderboard";
 import { RefreshPrompt } from "./refresh-prompt";
 import { ShareLeaderboardButton } from "./share-button";
@@ -17,6 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 const numberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
+const LEADERBOARD_LAYOUT_STORAGE_KEY = "newmantrivia.leaderboard.layout";
 
 function FloatingOrbs() {
   return (
@@ -45,6 +49,24 @@ export function ActiveOrCompletedState({
   data: LeaderboardData;
   mode: "active" | "completed";
 }) {
+  const [isLeaderboardFirst, setIsLeaderboardFirst] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedLayout = window.localStorage.getItem(LEADERBOARD_LAYOUT_STORAGE_KEY);
+    setIsLeaderboardFirst(savedLayout === "leaderboard-first");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem(
+      LEADERBOARD_LAYOUT_STORAGE_KEY,
+      isLeaderboardFirst ? "leaderboard-first" : "overview-first"
+    );
+  }, [isLeaderboardFirst]);
+
   const event = data.event;
   const heroTitle = mode === "completed" ? "Final showdown" : "Live standings";
   const statusLabel = mode === "completed" ? "Completed" : "Live now";
@@ -111,12 +133,33 @@ export function ActiveOrCompletedState({
           </div>
         </section>
 
-        <HighlightsStrip data={data} />
-        <RoundTimeline summary={data.roundsSummary} currentRound={data.currentRound} />
-
-        <section>
-          <Leaderboard data={data} isCompleted={mode === "completed"} />
-        </section>
+        {isLeaderboardFirst ? (
+          <>
+            <section>
+              <Leaderboard
+                data={data}
+                isCompleted={mode === "completed"}
+                isLeaderboardFirst={isLeaderboardFirst}
+                onLeaderboardLayoutChange={setIsLeaderboardFirst}
+              />
+            </section>
+            <HighlightsStrip data={data} />
+            <RoundTimeline summary={data.roundsSummary} currentRound={data.currentRound} />
+          </>
+        ) : (
+          <>
+            <HighlightsStrip data={data} />
+            <RoundTimeline summary={data.roundsSummary} currentRound={data.currentRound} />
+            <section>
+              <Leaderboard
+                data={data}
+                isCompleted={mode === "completed"}
+                isLeaderboardFirst={isLeaderboardFirst}
+                onLeaderboardLayoutChange={setIsLeaderboardFirst}
+              />
+            </section>
+          </>
+        )}
       </div>
     </div>
   );
@@ -289,4 +332,3 @@ function HeroStat({
     </Card>
   );
 }
-

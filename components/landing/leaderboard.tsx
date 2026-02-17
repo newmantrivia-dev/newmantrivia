@@ -29,9 +29,16 @@ import {
 interface LeaderboardProps {
   data: LeaderboardData;
   isCompleted: boolean;
+  isLeaderboardFirst: boolean;
+  onLeaderboardLayoutChange: (isFirst: boolean) => void;
 }
 
-export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
+export function Leaderboard({
+  data,
+  isCompleted,
+  isLeaderboardFirst,
+  onLeaderboardLayoutChange,
+}: LeaderboardProps) {
   const [viewMode, setViewMode] = useState<"total" | "last-round">("total");
   const [layoutMode, setLayoutMode] = useState<"table" | "cards">("table");
   const [density, setDensity] = useState<"comfortable" | "compact" | "skinny">("comfortable");
@@ -82,6 +89,8 @@ export function Leaderboard({ data, isCompleted }: LeaderboardProps) {
         setMaxTeams={setMaxTeams}
         totalTeams={data.rankings.length}
         hiddenTeamsCount={hiddenTeamsCount}
+        isLeaderboardFirst={isLeaderboardFirst}
+        onLeaderboardLayoutChange={onLeaderboardLayoutChange}
       />
 
       {layoutMode === "table" && (
@@ -139,6 +148,8 @@ function LeaderboardTopBar({
   setMaxTeams,
   totalTeams,
   hiddenTeamsCount,
+  isLeaderboardFirst,
+  onLeaderboardLayoutChange,
 }: {
   isCompleted: boolean;
   lastUpdatedLabel: string;
@@ -154,8 +165,11 @@ function LeaderboardTopBar({
   setMaxTeams: (max: "all" | 20 | 10) => void;
   totalTeams: number;
   hiddenTeamsCount: number;
+  isLeaderboardFirst: boolean;
+  onLeaderboardLayoutChange: (isFirst: boolean) => void;
 }) {
   const teamsLabel = maxTeams === "all" ? "All teams" : `Top ${maxTeams}`;
+  const layoutLabel = isLeaderboardFirst ? "Leaderboard first" : "Overview first";
 
   return (
     <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-white/10 p-6 shadow-xl backdrop-blur lg:flex-row lg:items-center lg:justify-between">
@@ -170,7 +184,7 @@ function LeaderboardTopBar({
           </p>
         )}
         <p className="text-xs uppercase tracking-[0.32em] text-white/55">
-          Display: {layoutMode} • {density} • {teamsLabel}
+          Display: {layoutMode} • {density} • {teamsLabel} • {layoutLabel}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
@@ -195,6 +209,8 @@ function LeaderboardTopBar({
           maxTeams={maxTeams}
           setMaxTeams={setMaxTeams}
           totalTeams={totalTeams}
+          isLeaderboardFirst={isLeaderboardFirst}
+          onLeaderboardLayoutChange={onLeaderboardLayoutChange}
         />
         <span className="text-xs uppercase tracking-[0.28em] text-white/60">
           {hiddenTeamsCount > 0 ? `+${hiddenTeamsCount} hidden` : `${totalTeams} teams`}
@@ -243,6 +259,8 @@ function DisplayMenu({
   maxTeams,
   setMaxTeams,
   totalTeams,
+  isLeaderboardFirst,
+  onLeaderboardLayoutChange,
 }: {
   layoutMode: "table" | "cards";
   setLayoutMode: (mode: "table" | "cards") => void;
@@ -251,8 +269,11 @@ function DisplayMenu({
   maxTeams: "all" | 20 | 10;
   setMaxTeams: (max: "all" | 20 | 10) => void;
   totalTeams: number;
+  isLeaderboardFirst: boolean;
+  onLeaderboardLayoutChange: (isFirst: boolean) => void;
 }) {
   const maxTeamsValue = maxTeams === "all" ? "all" : String(maxTeams);
+  const pageLayoutValue = isLeaderboardFirst ? "leaderboard-first" : "overview-first";
 
   return (
     <DropdownMenu>
@@ -320,6 +341,17 @@ function DisplayMenu({
           <DropdownMenuRadioItem value="10" disabled={totalTeams < 10}>
             Top 10
           </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator className="bg-white/10" />
+        <DropdownMenuLabel className="text-xs uppercase tracking-[0.3em] text-white/60">
+          Page layout
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={pageLayoutValue}
+          onValueChange={(value) => onLeaderboardLayoutChange(value === "leaderboard-first")}
+        >
+          <DropdownMenuRadioItem value="overview-first">Overview first</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="leaderboard-first">Leaderboard first</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
