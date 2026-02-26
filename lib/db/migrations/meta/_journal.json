@@ -15,6 +15,20 @@
       "when": 1761923682558,
       "tag": "0001_spotty_tiger_shark",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772146751685,
+      "tag": "0002_fluffy_famine",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772148321642,
+      "tag": "0003_loving_the_leader",
+      "breakpoints": true
     }
   ]
 }

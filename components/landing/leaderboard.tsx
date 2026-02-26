@@ -9,8 +9,15 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -22,6 +29,7 @@ import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
   ChevronDown,
+  MessageSquare,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
@@ -31,6 +39,7 @@ interface LeaderboardProps {
   isCompleted: boolean;
   isLeaderboardFirst: boolean;
   onLeaderboardLayoutChange: (isFirst: boolean) => void;
+  liveCommentary: LeaderboardData["commentaryHistory"][number] | null;
 }
 
 export function Leaderboard({
@@ -38,7 +47,9 @@ export function Leaderboard({
   isCompleted,
   isLeaderboardFirst,
   onLeaderboardLayoutChange,
+  liveCommentary,
 }: LeaderboardProps) {
+  const [isCommentaryDrawerOpen, setIsCommentaryDrawerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"total" | "last-round">("total");
   const [layoutMode, setLayoutMode] = useState<"table" | "cards">("table");
   const [density, setDensity] = useState<"comfortable" | "compact" | "skinny">("comfortable");
@@ -74,6 +85,7 @@ export function Leaderboard({
 
   return (
     <div className="space-y-6">
+      <LiveCommentaryBanner commentary={liveCommentary} />
       <LeaderboardTopBar
         isCompleted={isCompleted}
         lastUpdatedLabel={lastUpdatedLabel}
@@ -91,6 +103,8 @@ export function Leaderboard({
         hiddenTeamsCount={hiddenTeamsCount}
         isLeaderboardFirst={isLeaderboardFirst}
         onLeaderboardLayoutChange={onLeaderboardLayoutChange}
+        commentaryCount={data.commentaryHistory.length}
+        onOpenCommentary={() => setIsCommentaryDrawerOpen(true)}
       />
 
       {layoutMode === "table" && (
@@ -129,6 +143,12 @@ export function Leaderboard({
           ))}
         </div>
       )}
+
+      <CommentaryDrawer
+        open={isCommentaryDrawerOpen}
+        onOpenChange={setIsCommentaryDrawerOpen}
+        commentaryHistory={data.commentaryHistory}
+      />
     </div>
   );
 }
@@ -150,6 +170,8 @@ function LeaderboardTopBar({
   hiddenTeamsCount,
   isLeaderboardFirst,
   onLeaderboardLayoutChange,
+  commentaryCount,
+  onOpenCommentary,
 }: {
   isCompleted: boolean;
   lastUpdatedLabel: string;
@@ -167,9 +189,13 @@ function LeaderboardTopBar({
   hiddenTeamsCount: number;
   isLeaderboardFirst: boolean;
   onLeaderboardLayoutChange: (isFirst: boolean) => void;
+  commentaryCount: number;
+  onOpenCommentary: () => void;
 }) {
   const teamsLabel = maxTeams === "all" ? "All teams" : `Top ${maxTeams}`;
   const layoutLabel = isLeaderboardFirst ? "Leaderboard first" : "Overview first";
+  const teamCountLabel =
+    hiddenTeamsCount > 0 ? `${totalTeams} teams (+${hiddenTeamsCount} hidden)` : `${totalTeams} teams`;
 
   return (
     <div className="flex flex-col gap-4 rounded-[24px] border border-white/10 bg-white/10 p-6 shadow-xl backdrop-blur lg:flex-row lg:items-center lg:justify-between">
@@ -184,10 +210,10 @@ function LeaderboardTopBar({
           </p>
         )}
         <p className="text-xs uppercase tracking-[0.32em] text-white/55">
-          Display: {layoutMode} • {density} • {teamsLabel} • {layoutLabel}
+          Display: {layoutMode} • {density} • {teamsLabel} • {layoutLabel} • {teamCountLabel}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
         <div className="flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/35 p-1">
           <ViewToggle
             label="Overall"
@@ -211,10 +237,9 @@ function LeaderboardTopBar({
           totalTeams={totalTeams}
           isLeaderboardFirst={isLeaderboardFirst}
           onLeaderboardLayoutChange={onLeaderboardLayoutChange}
+          commentaryCount={commentaryCount}
+          onOpenCommentary={onOpenCommentary}
         />
-        <span className="text-xs uppercase tracking-[0.28em] text-white/60">
-          {hiddenTeamsCount > 0 ? `+${hiddenTeamsCount} hidden` : `${totalTeams} teams`}
-        </span>
       </div>
     </div>
   );
@@ -261,6 +286,8 @@ function DisplayMenu({
   totalTeams,
   isLeaderboardFirst,
   onLeaderboardLayoutChange,
+  commentaryCount,
+  onOpenCommentary,
 }: {
   layoutMode: "table" | "cards";
   setLayoutMode: (mode: "table" | "cards") => void;
@@ -271,6 +298,8 @@ function DisplayMenu({
   totalTeams: number;
   isLeaderboardFirst: boolean;
   onLeaderboardLayoutChange: (isFirst: boolean) => void;
+  commentaryCount: number;
+  onOpenCommentary: () => void;
 }) {
   const maxTeamsValue = maxTeams === "all" ? "all" : String(maxTeams);
   const pageLayoutValue = isLeaderboardFirst ? "leaderboard-first" : "overview-first";
@@ -353,6 +382,19 @@ function DisplayMenu({
           <DropdownMenuRadioItem value="overview-first">Overview first</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="leaderboard-first">Leaderboard first</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator className="bg-white/10" />
+        <DropdownMenuItem
+          onSelect={onOpenCommentary}
+          className="flex cursor-pointer items-center justify-between text-white focus:bg-white/10 focus:text-white"
+        >
+          <span className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Commentary history
+          </span>
+          <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em]">
+            {commentaryCount}
+          </span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -416,6 +458,83 @@ function EmptyLeaderboardMessage({
           : "As soon as teams submit their first points, they will appear here."}
       </p>
     </Card>
+  );
+}
+
+function LiveCommentaryBanner({
+  commentary,
+}: {
+  commentary: LeaderboardData["commentaryHistory"][number] | null;
+}) {
+  return (
+    <AnimatePresence>
+      {commentary && (
+        <motion.div
+          key={commentary.id}
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.18 }}
+          className="rounded-2xl border border-sky-200/30 bg-sky-400/15 px-4 py-3 text-white shadow-lg backdrop-blur"
+        >
+          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em] text-sky-100/90">
+            <MessageSquare className="h-4 w-4" />
+            <span>Commentary</span>
+            <span className="text-white/60">•</span>
+            <span>{commentary.createdByName}</span>
+          </div>
+          <p className="mt-2 text-base font-medium tracking-tight">
+            {commentary.message}
+          </p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function CommentaryDrawer({
+  open,
+  onOpenChange,
+  commentaryHistory,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  commentaryHistory: LeaderboardData["commentaryHistory"];
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="h-screen w-full border-white/10 bg-slate-950/95 p-0 text-white sm:w-[420px] sm:max-w-none"
+      >
+        <SheetHeader className="border-b border-white/10 p-5">
+          <SheetTitle className="flex items-center gap-2 text-xl">
+            <MessageSquare className="h-5 w-5" />
+            Commentary History
+          </SheetTitle>
+        </SheetHeader>
+        <div className="max-h-[calc(100vh-78px)] overflow-y-auto p-4">
+          {commentaryHistory.length === 0 ? (
+            <Card className="border-white/10 bg-white/5 p-6 text-center text-white/70">
+              No commentary messages yet.
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {commentaryHistory.map((entry) => (
+                <Card key={entry.id} className="border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-medium text-white">
+                    {entry.message}
+                  </p>
+                  <div className="mt-2 text-xs uppercase tracking-[0.28em] text-white/60">
+                    {entry.createdByName} • {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

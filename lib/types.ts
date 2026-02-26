@@ -1,4 +1,11 @@
-import type { events, rounds, teams, scores, scoreAuditLog } from "@/lib/db/schema";
+import type {
+  events,
+  rounds,
+  teams,
+  scores,
+  scoreAuditLog,
+  commentaryMessages,
+} from "@/lib/db/schema";
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
@@ -14,6 +21,17 @@ export type NewScore = typeof scores.$inferInsert;
 
 export type AuditLog = typeof scoreAuditLog.$inferSelect;
 export type NewAuditLog = typeof scoreAuditLog.$inferInsert;
+export type CommentaryMessage = typeof commentaryMessages.$inferSelect;
+export type NewCommentaryMessage = typeof commentaryMessages.$inferInsert;
+
+export type CommentaryEntry = {
+  id: string;
+  message: string;
+  displayDurationMs: number;
+  createdAt: Date;
+  createdBy: string;
+  createdByName: string;
+};
 
 export type EventWithDetails = Event & {
   rounds: Round[];
@@ -55,6 +73,7 @@ export type LeaderboardData = {
   lastCompletedRound: number | null;
   highlights: LeaderboardHighlights;
   roundsSummary: RoundSummary[];
+  commentaryHistory: CommentaryEntry[];
 };
 
 export type RoundSummary = {

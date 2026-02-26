@@ -12,6 +12,23 @@ import { ABLY_EVENTS } from "@/lib/ably/config";
 
 type LifecycleAction = "created" | "started" | "ended" | "reopened" | "archived" | "deleted" | "reset";
 type LifecycleStatus = "draft" | "upcoming" | "active" | "completed" | "archived";
+const SINGLE_ACTIVE_EVENT_CONSTRAINT = "events_single_active_event_idx";
+
+function isSingleActiveEventConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const dbError = error as { code?: string; constraint?: string; message?: string };
+  if (dbError.code !== "23505") {
+    return false;
+  }
+
+  return (
+    dbError.constraint === SINGLE_ACTIVE_EVENT_CONSTRAINT ||
+    dbError.message?.includes(SINGLE_ACTIVE_EVENT_CONSTRAINT) === true
+  );
+}
 
 async function publishLifecycleEvent({
   eventId,
@@ -103,7 +120,7 @@ export async function createEvent(
         action: "created",
         status,
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
       });
     } catch (error) {
       console.error("[Ably] Failed to publish event lifecycle:", error);
@@ -214,7 +231,7 @@ export async function startEvent(
         action: "started",
         status: "active",
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
       });
     } catch (error) {
       console.error("[Ably] Failed to publish event lifecycle:", error);
@@ -225,6 +242,19 @@ export async function startEvent(
     revalidatePath(publicPaths.home);
     return { success: true, data: undefined };
   } catch (error) {
+    if (isSingleActiveEventConstraintError(error)) {
+      const existingActiveEvent = await db.query.events.findFirst({
+        where: eq(events.status, "active"),
+      });
+
+      return {
+        success: false,
+        error: existingActiveEvent
+          ? `Cannot start event: "${existingActiveEvent.name}" is already active. Please end it first.`
+          : "Cannot start event because another event was activated. Refresh and try again.",
+      };
+    }
+
     console.error("Error starting event:", error);
     return {
       success: false,
@@ -272,7 +302,7 @@ export async function endEvent(
         action: "ended",
         status: "completed",
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
       });
     } catch (error) {
       console.error('[Ably] Failed to publish event status change:', error);
@@ -329,7 +359,7 @@ export async function archiveEvent(
         action: "archived",
         status: "archived",
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
       });
     } catch (error) {
       console.error('[Ably] Failed to publish event status change:', error);
@@ -398,7 +428,7 @@ export async function reopenEvent(
         action: "reopened",
         status: "active",
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
       });
     } catch (error) {
       console.error('[Ably] Failed to publish event status change:', error);
@@ -409,6 +439,19 @@ export async function reopenEvent(
     revalidatePath(publicPaths.home);
     return { success: true, data: undefined };
   } catch (error) {
+    if (isSingleActiveEventConstraintError(error)) {
+      const existingActiveEvent = await db.query.events.findFirst({
+        where: eq(events.status, "active"),
+      });
+
+      return {
+        success: false,
+        error: existingActiveEvent
+          ? `Cannot reopen event: "${existingActiveEvent.name}" is already active. Please end it first.`
+          : "Cannot reopen event because another event is active. Refresh and try again.",
+      };
+    }
+
     console.error("Error reopening event:", error);
     return {
       success: false,
@@ -541,7 +584,7 @@ export async function moveToPreviousRound(
         newRound: previousRound,
         totalRounds: event.rounds.length,
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -601,7 +644,7 @@ export async function resetEvent(
         newRound: 1,
         totalRounds: event.rounds.length,
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
         timestamp: new Date().toISOString(),
       });
 
@@ -611,7 +654,7 @@ export async function resetEvent(
         action: "reset",
         status: "active",
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
       });
     } catch (error) {
       console.error("[Ably] Failed to publish reset event:", error);
@@ -645,10 +688,10 @@ export async function deleteEvent(
       return { success: false, error: "Event not found" };
     }
 
-    if (event.status !== "draft" && event.status !== "upcoming") {
+    if (event.status === "active") {
       return {
         success: false,
-        error: "Cannot delete an active, completed, or archived event",
+        error: "Cannot delete an active event. End it first.",
       };
     }
 
@@ -661,13 +704,17 @@ export async function deleteEvent(
         action: "deleted",
         status: event.status,
         changedBy: user.id,
-        changedByName: user.name || user.email,
+        changedByName: user.name || user.email || "Admin",
       });
     } catch (error) {
       console.error("[Ably] Failed to publish event lifecycle:", error);
     }
 
     revalidatePath(adminPaths.root);
+    revalidatePath(adminPaths.history);
+    revalidatePath(adminPaths.events.byId(eventId));
+    revalidatePath(adminPaths.events.view(eventId));
+    revalidatePath(publicPaths.home);
     return { success: true, data: undefined };
   } catch (error) {
     console.error("Error deleting event:", error);

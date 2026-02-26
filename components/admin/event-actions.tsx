@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,23 +12,42 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { addTeam } from "@/actions/teams";
 import { addRound } from "@/actions/rounds";
+import { deleteCommentary, postCommentary } from "@/actions/commentary";
 import { endEvent, resetEvent } from "@/actions/events";
 import { toast } from "sonner";
-import { Flag, Users, Target, RotateCcw } from "lucide-react";
+import { Flag, Users, Target, RotateCcw, MessageSquare, Trash2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import type { Event } from "@/lib/types";
 
 interface EventActionsProps {
   event: Event & {
     teams?: Array<{ id: string }>;
     rounds?: Array<{ id: string; roundNumber: number }>;
+    commentaryMessages?: Array<{
+      id: string;
+      message: string;
+      displayDurationMs: number;
+      createdAt: Date;
+      createdBy: string;
+      createdByUser: {
+        id: string;
+        name: string;
+        email: string;
+      } | null;
+    }>;
   };
 }
 
 export function EventActions({ event }: EventActionsProps) {
   const router = useRouter();
+  const recentCommentary = useMemo(
+    () => (event.commentaryMessages ?? []).slice(0, 10),
+    [event.commentaryMessages]
+  );
 
   const [showAddTeamDialog, setShowAddTeamDialog] = useState(false);
   const [teamName, setTeamName] = useState("");
@@ -46,6 +65,11 @@ export function EventActions({ event }: EventActionsProps) {
   const [isEnding, setIsEnding] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showCommentaryDialog, setShowCommentaryDialog] = useState(false);
+  const [commentaryMessage, setCommentaryMessage] = useState("");
+  const [commentaryDurationSec, setCommentaryDurationSec] = useState("5");
+  const [isPostingCommentary, setIsPostingCommentary] = useState(false);
+  const [retractingCommentaryId, setRetractingCommentaryId] = useState<string | null>(null);
 
   const handleAddTeam = async () => {
     if (!teamName.trim()) {
@@ -125,6 +149,76 @@ export function EventActions({ event }: EventActionsProps) {
     setIsResetting(false);
   };
 
+  const submitCommentary = async (
+    message: string,
+    displayDurationMs: number,
+    successMessage: string
+  ) => {
+    setIsPostingCommentary(true);
+    const result = await postCommentary({
+      eventId: event.id,
+      message,
+      displayDurationMs,
+    });
+
+    if (result.success) {
+      toast.success(successMessage);
+      router.refresh();
+      setIsPostingCommentary(false);
+      return true;
+    } else {
+      toast.error(result.error);
+    }
+
+    setIsPostingCommentary(false);
+    return false;
+  };
+
+  const handlePostCommentary = async () => {
+    const message = commentaryMessage.trim();
+    if (!message) {
+      toast.error("Commentary message is required");
+      return;
+    }
+
+    const durationSeconds = Number.parseInt(commentaryDurationSec, 10);
+    if (Number.isNaN(durationSeconds)) {
+      toast.error("Duration must be a number");
+      return;
+    }
+
+    const success = await submitCommentary(message, durationSeconds * 1000, "Commentary posted");
+    if (success) {
+      setCommentaryMessage("");
+      setCommentaryDurationSec("5");
+      setShowCommentaryDialog(false);
+    }
+  };
+
+  const handleResurfaceCommentary = async (entry: {
+    message: string;
+    displayDurationMs: number;
+  }) => {
+    await submitCommentary(entry.message, entry.displayDurationMs, "Commentary resurfaced");
+  };
+
+  const handleRetractCommentary = async (commentaryId: string) => {
+    setRetractingCommentaryId(commentaryId);
+    const result = await deleteCommentary({
+      eventId: event.id,
+      commentaryId,
+    });
+
+    if (result.success) {
+      toast.success("Commentary retracted");
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+
+    setRetractingCommentaryId(null);
+  };
+
   return (
     <>
       <div className="grid w-full gap-2 sm:flex sm:flex-wrap">
@@ -145,6 +239,15 @@ export function EventActions({ event }: EventActionsProps) {
         >
           <Target className="w-4 h-4 mr-2" />
           Add Round
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start sm:w-auto sm:justify-center"
+          onClick={() => setShowCommentaryDialog(true)}
+        >
+          <MessageSquare className="w-4 h-4 mr-2" />
+          Post Commentary
         </Button>
         <Button
           variant="outline"
@@ -298,6 +401,110 @@ export function EventActions({ event }: EventActionsProps) {
             </Button>
             <Button variant="destructive" onClick={handleEndEvent} disabled={isEnding}>
               {isEnding ? "Ending..." : "End Event"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Commentary Dialog */}
+      <Dialog open={showCommentaryDialog} onOpenChange={setShowCommentaryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Post Commentary</DialogTitle>
+            <DialogDescription>
+              Send a live message to audience screens. It will appear briefly and also be saved in
+              commentary history.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="commentaryMessage">
+                Message <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="commentaryMessage"
+                placeholder="Team Blue just jumped into first place!"
+                value={commentaryMessage}
+                onChange={(e) => setCommentaryMessage(e.target.value)}
+                disabled={isPostingCommentary}
+                maxLength={280}
+                className="min-h-[100px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                {commentaryMessage.trim().length}/280 characters
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="commentaryDuration">Display Duration (seconds)</Label>
+              <Input
+                id="commentaryDuration"
+                type="number"
+                min="2"
+                max="15"
+                value={commentaryDurationSec}
+                onChange={(e) => setCommentaryDurationSec(e.target.value)}
+                disabled={isPostingCommentary}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Recent Commentary</Label>
+              {recentCommentary.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No prior commentary yet.
+                </p>
+              ) : (
+                <div className="max-h-52 space-y-2 overflow-y-auto rounded-md border p-2">
+                  {recentCommentary.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="rounded-md border bg-muted/30 p-2"
+                    >
+                      <p className="text-sm">{entry.message}</p>
+                      <div className="mt-1 space-y-2">
+                        <div className="text-xs text-muted-foreground">
+                          {(entry.createdByUser?.name || entry.createdByUser?.email || "Admin")} •{" "}
+                          {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleResurfaceCommentary({
+                                message: entry.message,
+                                displayDurationMs: entry.displayDurationMs,
+                              })
+                            }
+                            disabled={isPostingCommentary || retractingCommentaryId === entry.id}
+                          >
+                            Resurface
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRetractCommentary(entry.id)}
+                            disabled={isPostingCommentary || retractingCommentaryId === entry.id}
+                          >
+                            <Trash2 className="mr-1 h-3.5 w-3.5" />
+                            {retractingCommentaryId === entry.id ? "Retracting..." : "Retract"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCommentaryDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handlePostCommentary} disabled={isPostingCommentary}>
+              {isPostingCommentary ? "Posting..." : "Post Commentary"}
             </Button>
           </DialogFooter>
         </DialogContent>

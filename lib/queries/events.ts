@@ -95,6 +95,19 @@ export async function getEventById(eventId: string) {
         orderBy: (rounds, { asc }) => [asc(rounds.roundNumber)],
       },
       scores: true,
+      commentaryMessages: {
+        orderBy: (commentaryMessages, { desc }) => [desc(commentaryMessages.createdAt)],
+        limit: 20,
+        with: {
+          createdByUser: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
       creator: true,
     },
   });

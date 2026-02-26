@@ -4,6 +4,8 @@ export const ABLY_EVENTS = {
   ROUND_CHANGED: 'round:changed',
   TEAM_ADDED: 'team:added',
   TEAM_REMOVED: 'team:removed',
+  COMMENTARY_POSTED: 'commentary:posted',
+  COMMENTARY_DELETED: 'commentary:deleted',
   EVENT_STATUS_CHANGED: 'event:status',
   EVENT_LIFECYCLE: 'event:lifecycle',
 } as const;
@@ -47,6 +49,22 @@ export type AblyEventPayloads = {
   'team:removed': {
     teamId: string;
     teamName: string;
+    timestamp: string;
+  };
+
+  'commentary:posted': {
+    id: string;
+    message: string;
+    displayDurationMs: number;
+    createdBy: string;
+    createdByName: string;
+    timestamp: string;
+  };
+
+  'commentary:deleted': {
+    id: string;
+    deletedBy: string;
+    deletedByName: string;
     timestamp: string;
   };
   

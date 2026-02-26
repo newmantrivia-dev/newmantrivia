@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
-import { boolean, decimal, integer, pgTable, text, timestamp, index, pgEnum, uuid, unique } from 'drizzle-orm/pg-core';
+import { boolean, decimal, integer, pgTable, text, timestamp, index, pgEnum, uuid, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const roles = pgEnum("role", ["user", "admin"]);
 
@@ -102,6 +103,9 @@ export const events = pgTable(
   },
   (table) => [
     index("events_status_idx").on(table.status),
+    uniqueIndex("events_single_active_event_idx")
+      .on(table.status)
+      .where(sql`${table.status} = 'active'`),
     index("events_created_by_idx").on(table.createdBy),
     index("events_started_at_idx").on(table.startedAt),
     index("events_status_ended_at_idx").on(table.status, table.endedAt),
@@ -220,11 +224,34 @@ export const scoreAuditLog = pgTable(
   ]
 );
 
+export const commentaryMessages = pgTable(
+  "commentary_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    displayDurationMs: integer("display_duration_ms").default(5000).notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("commentary_event_id_idx").on(table.eventId),
+    index("commentary_created_by_idx").on(table.createdBy),
+    index("commentary_created_at_idx").on(table.createdAt),
+    index("commentary_event_created_at_idx").on(table.eventId, table.createdAt),
+  ]
+);
+
 export const userRelations = relations(user, ({ many }) => ({
   eventsCreated: many(events),
   teamsCreated: many(teams),
   scoresEntered: many(scores),
   auditLogEntries: many(scoreAuditLog),
+  commentaryMessages: many(commentaryMessages),
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
@@ -236,6 +263,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   teams: many(teams),
   scores: many(scores),
   auditLogs: many(scoreAuditLog),
+  commentaryMessages: many(commentaryMessages),
 }));
 
 export const roundsRelations = relations(rounds, ({ one }) => ({
@@ -289,6 +317,17 @@ export const scoreAuditLogRelations = relations(scoreAuditLog, ({ one }) => ({
   }),
   changedByUser: one(user, {
     fields: [scoreAuditLog.changedBy],
+    references: [user.id],
+  }),
+}));
+
+export const commentaryMessagesRelations = relations(commentaryMessages, ({ one }) => ({
+  event: one(events, {
+    fields: [commentaryMessages.eventId],
+    references: [events.id],
+  }),
+  createdByUser: one(user, {
+    fields: [commentaryMessages.createdBy],
     references: [user.id],
   }),
 }));

@@ -14,6 +14,18 @@ export type EventWithDetails = Event & {
   teams: Team[];
   rounds: Array<{ id: string; roundNumber: number; roundName: string | null; isBonus: boolean }>;
   scores: Array<{ id: string; teamId: string; roundNumber: number; points: string }>;
+  commentaryMessages: Array<{
+    id: string;
+    message: string;
+    displayDurationMs: number;
+    createdAt: Date;
+    createdBy: string;
+    createdByUser: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+  }>;
 };
 
 const EventDashboardContext = createContext<EventWithDetails | null>(null);
@@ -105,6 +117,28 @@ export function RealtimeEventDashboard({
 
     router.refresh();
   }, [router]));
+
+  useAblyEvent(eventId, ABLY_EVENTS.COMMENTARY_POSTED, useCallback((payload) => {
+    if (isMyChange(payload.createdBy)) {
+      return;
+    }
+
+    toast.info(`${payload.createdByName}: ${payload.message}`, {
+      duration: payload.displayDurationMs,
+    });
+
+    router.refresh();
+  }, [router, isMyChange]));
+
+  useAblyEvent(eventId, ABLY_EVENTS.COMMENTARY_DELETED, useCallback((payload) => {
+    if (!isMyChange(payload.deletedBy)) {
+      toast.warning(`${payload.deletedByName} retracted a commentary message`, {
+        duration: 3500,
+      });
+    }
+
+    router.refresh();
+  }, [router, isMyChange]));
 
   useAblyEvent(eventId, ABLY_EVENTS.EVENT_STATUS_CHANGED, useCallback((payload) => {
     if (payload.status === 'completed') {

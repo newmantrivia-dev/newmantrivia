@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
-import { events } from "@/lib/db/schema";
+import { commentaryMessages, events } from "@/lib/db/schema";
 import { eq, and, gte, desc, asc } from "drizzle-orm";
 import type {
   TeamRanking,
+  CommentaryEntry,
   LeaderboardData,
   Event,
   Team,
@@ -16,6 +17,32 @@ export async function getPublicEventData(): Promise<
   | { type: "upcoming"; event: LeaderboardData["event"] }
   | { type: "none" }
 > {
+  const getCommentaryHistory = async (eventId: string): Promise<CommentaryEntry[]> => {
+    const commentary = await db.query.commentaryMessages.findMany({
+      where: eq(commentaryMessages.eventId, eventId),
+      orderBy: (table, { desc }) => [desc(table.createdAt)],
+      limit: 50,
+      with: {
+        createdByUser: {
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return commentary.map((entry) => ({
+      id: entry.id,
+      message: entry.message,
+      displayDurationMs: entry.displayDurationMs,
+      createdAt: entry.createdAt,
+      createdBy: entry.createdBy,
+      createdByName: entry.createdByUser?.name || entry.createdByUser?.email || "Admin",
+    }));
+  };
+
   const activeEvent = await db.query.events.findFirst({
     where: eq(events.status, "active"),
     with: {
@@ -30,7 +57,8 @@ export async function getPublicEventData(): Promise<
   });
 
   if (activeEvent) {
-    const leaderboardData = calculateLeaderboard(activeEvent);
+    const commentaryHistory = await getCommentaryHistory(activeEvent.id);
+    const leaderboardData = calculateLeaderboard(activeEvent, commentaryHistory);
     return { type: "active", data: leaderboardData };
   }
 
@@ -53,7 +81,8 @@ export async function getPublicEventData(): Promise<
   });
 
   if (completedEvent) {
-    const leaderboardData = calculateLeaderboard(completedEvent);
+    const commentaryHistory = await getCommentaryHistory(completedEvent.id);
+    const leaderboardData = calculateLeaderboard(completedEvent, commentaryHistory);
     return { type: "completed", data: leaderboardData };
   }
 
@@ -77,7 +106,8 @@ export async function getPublicEventData(): Promise<
  * Calculate leaderboard rankings from event data
  */
 function calculateLeaderboard(
-  event: Event & { teams: Team[]; rounds: Round[]; scores: Score[] }
+  event: Event & { teams: Team[]; rounds: Round[]; scores: Score[] },
+  commentaryHistory: CommentaryEntry[]
 ): LeaderboardData {
   if (!event.teams || !event.rounds || !event.scores) {
     throw new Error("Event data incomplete");
@@ -381,5 +411,6 @@ function calculateLeaderboard(
       tightRace,
     },
     roundsSummary,
+    commentaryHistory,
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRealtimeEventData } from './realtime-event-wrapper';
+import { useRealtimeCommentary, useRealtimeEventData } from './realtime-event-wrapper';
 import { ActiveOrCompletedState } from './active-state';
 
 interface ActiveOrCompletedStateWrapperProps {
@@ -9,6 +9,6 @@ interface ActiveOrCompletedStateWrapperProps {
 
 export function ActiveOrCompletedStateWrapper({ mode }: ActiveOrCompletedStateWrapperProps) {
   const data = useRealtimeEventData();
-  return <ActiveOrCompletedState data={data} mode={mode} />;
+  const liveCommentary = useRealtimeCommentary();
+  return <ActiveOrCompletedState data={data} mode={mode} liveCommentary={liveCommentary} />;
 }
-

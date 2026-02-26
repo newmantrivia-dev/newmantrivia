@@ -10,6 +10,7 @@ import { ArrowLeft, Users, Target, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { RoundTabs } from "./round-tabs";
 import { CurrentStandings } from "./current-standings";
+import { ScoreOverviewTable } from "./score-overview-table";
 import { EventActions } from "./event-actions";
 import { useEventDashboardData } from "./realtime-event-dashboard";
 
@@ -100,6 +101,14 @@ export function EventDashboardContent() {
 
       {/* Current Standings */}
       <CurrentStandings teamTotals={teamTotals} />
+
+      {/* Score Overview */}
+      <ScoreOverviewTable
+        teams={event.teams}
+        rounds={event.rounds}
+        scores={event.scores}
+        currentRound={currentRound}
+      />
     </div>
   );
 }

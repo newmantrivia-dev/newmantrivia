@@ -11,10 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { reopenEvent, archiveEvent } from "@/actions/events";
+import { reopenEvent, archiveEvent, deleteEvent } from "@/actions/events";
 import { exportEventCSV } from "@/actions/export";
+import { adminPaths } from "@/lib/paths";
 import { toast } from "sonner";
-import { Download, RotateCcw, Archive } from "lucide-react";
+import { Download, RotateCcw, Archive, Trash2 } from "lucide-react";
 import type { Event } from "@/lib/types";
 
 interface EventDetailsActionsProps {
@@ -26,8 +27,10 @@ export function EventDetailsActions({ event }: EventDetailsActionsProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -79,6 +82,22 @@ export function EventDetailsActions({ event }: EventDetailsActionsProps) {
     setIsArchiving(false);
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    const result = await deleteEvent(event.id);
+
+    if (result.success) {
+      toast.success("Event deleted successfully!");
+      setShowDeleteDialog(false);
+      router.push(adminPaths.root);
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+
+    setIsDeleting(false);
+  };
+
   return (
     <>
       <div className="flex gap-2 flex-wrap">
@@ -105,7 +124,26 @@ export function EventDetailsActions({ event }: EventDetailsActionsProps) {
               <Archive className="w-4 h-4 mr-2" />
               Archive
             </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Event
+            </Button>
           </>
+        )}
+
+        {event.status === "archived" && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Event
+          </Button>
         )}
       </div>
 
@@ -146,6 +184,27 @@ export function EventDetailsActions({ event }: EventDetailsActionsProps) {
             </Button>
             <Button onClick={handleArchive} disabled={isArchiving}>
               {isArchiving ? "Archiving..." : "Archive Event"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Event Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Event</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete &quot;{event.name}&quot;? All teams,
+              rounds, scores, and commentary will be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete Event"}
             </Button>
           </DialogFooter>
         </DialogContent>

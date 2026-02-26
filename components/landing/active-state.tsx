@@ -45,9 +45,11 @@ function formatLeaderStat(data: LeaderboardData, mode: "active" | "completed"): 
 export function ActiveOrCompletedState({
   data,
   mode,
+  liveCommentary,
 }: {
   data: LeaderboardData;
   mode: "active" | "completed";
+  liveCommentary: LeaderboardData["commentaryHistory"][number] | null;
 }) {
   const [isLeaderboardFirst, setIsLeaderboardFirst] = useState(false);
 
@@ -141,6 +143,7 @@ export function ActiveOrCompletedState({
                 isCompleted={mode === "completed"}
                 isLeaderboardFirst={isLeaderboardFirst}
                 onLeaderboardLayoutChange={setIsLeaderboardFirst}
+                liveCommentary={liveCommentary}
               />
             </section>
             <HighlightsStrip data={data} />
@@ -156,6 +159,7 @@ export function ActiveOrCompletedState({
                 isCompleted={mode === "completed"}
                 isLeaderboardFirst={isLeaderboardFirst}
                 onLeaderboardLayoutChange={setIsLeaderboardFirst}
+                liveCommentary={liveCommentary}
               />
             </section>
           </>
