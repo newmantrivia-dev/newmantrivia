@@ -150,8 +150,13 @@ function calculateLeaderboard(
   if (event.status === "active") {
     const currentRound = event.currentRound ?? 1;
     const candidateRound = currentRound - 1;
+    const totalRounds = sortedRoundNumbers.length;
+    const currentRoundIsFinal = currentRound === totalRounds;
+    const currentRoundIsCompleted = isRoundCompleted(currentRound);
 
-    if (candidateRound < 1) {
+    if (currentRoundIsFinal && currentRoundIsCompleted) {
+      lastCompletedRound = currentRound;
+    } else if (candidateRound < 1) {
       lastCompletedRound = null;
     } else if (isRoundCompleted(candidateRound)) {
       lastCompletedRound = candidateRound;
@@ -265,7 +270,9 @@ function calculateLeaderboard(
       ? !lastCompletedRound
         ? null
         : currentRoundHasScores
-          ? lastCompletedRound
+          ? activeCurrentRound && activeCurrentRound > 1
+            ? activeCurrentRound - 1
+            : null
           : lastCompletedRound > 1
             ? lastCompletedRound - 1
             : null
